@@ -1,82 +1,586 @@
-function SecurityAlerts({ devices, securityPolicy }) {
+import { useMemo } from "react";
 
-    const atRiskDevices = devices.filter(device => {
+function SecurityAlerts({
+    devices = [],
+    securityPolicy = {}
+}) {
 
-        const secure =
-            (!securityPolicy.antivirusRequired ||
-                device.antivirus) &&
-            (!securityPolicy.firewallRequired ||
-                device.firewall) &&
-            (!securityPolicy.backupRequired ||
-                device.backup);
+    // =====================================================
+    // SECURITY POLICY
+    // =====================================================
 
-        return !secure;
-    });
+    const antivirusRequired =
+        securityPolicy.antivirus_required ??
+        securityPolicy.antivirusRequired ??
+        true;
+
+    const firewallRequired =
+        securityPolicy.firewall_required ??
+        securityPolicy.firewallRequired ??
+        true;
+
+    const backupRequired =
+        securityPolicy.backup_required ??
+        securityPolicy.backupRequired ??
+        true;
+
+
+    // =====================================================
+    // FIND SECURITY PROBLEMS
+    // =====================================================
+
+    const alerts = useMemo(() => {
+
+        const results = [];
+
+
+        devices.forEach(device => {
+
+            // ---------------------------------------------
+            // ANTIVIRUS
+            // ---------------------------------------------
+
+            if (
+                antivirusRequired &&
+                device.antivirus !== true
+            ) {
+
+                results.push({
+                    id:
+                        `${device.id}-antivirus`,
+                    device:
+                        device.name,
+                    employee:
+                        device.employee,
+                    department:
+                        device.department,
+                    type:
+                        "Antivirus",
+                    message:
+                        "Antivirus protection is disabled.",
+                    severity:
+                        "High"
+                });
+
+            }
+
+
+            // ---------------------------------------------
+            // FIREWALL
+            // ---------------------------------------------
+
+            if (
+                firewallRequired &&
+                device.firewall !== true
+            ) {
+
+                results.push({
+                    id:
+                        `${device.id}-firewall`,
+                    device:
+                        device.name,
+                    employee:
+                        device.employee,
+                    department:
+                        device.department,
+                    type:
+                        "Firewall",
+                    message:
+                        "Firewall protection is disabled.",
+                    severity:
+                        "High"
+                });
+
+            }
+
+
+            // ---------------------------------------------
+            // BACKUP
+            // ---------------------------------------------
+
+            if (
+                backupRequired &&
+                device.backup !== true
+            ) {
+
+                results.push({
+                    id:
+                        `${device.id}-backup`,
+                    device:
+                        device.name,
+                    employee:
+                        device.employee,
+                    department:
+                        device.department,
+                    type:
+                        "Backup",
+                    message:
+                        "Backup protection is disabled.",
+                    severity:
+                        "High"
+                });
+
+            }
+
+
+            // ---------------------------------------------
+            // OFFLINE
+            // ---------------------------------------------
+
+            if (
+                device.online === false
+            ) {
+
+                results.push({
+                    id:
+                        `${device.id}-offline`,
+                    device:
+                        device.name,
+                    employee:
+                        device.employee,
+                    department:
+                        device.department,
+                    type:
+                        "Device Offline",
+                    message:
+                        "Device is currently offline.",
+                    severity:
+                        "Medium"
+                });
+
+            }
+
+        });
+
+
+        return results;
+
+    }, [
+        devices,
+        antivirusRequired,
+        firewallRequired,
+        backupRequired
+    ]);
+
+
+    // =====================================================
+    // DEVICE RISK COUNT
+    // =====================================================
+
+    const atRiskDevices =
+        useMemo(() => {
+
+            return devices.filter(
+                device => {
+
+                    const antivirusOK =
+                        !antivirusRequired ||
+                        device.antivirus === true;
+
+                    const firewallOK =
+                        !firewallRequired ||
+                        device.firewall === true;
+
+                    const backupOK =
+                        !backupRequired ||
+                        device.backup === true;
+
+                    return !(
+                        antivirusOK &&
+                        firewallOK &&
+                        backupOK
+                    );
+                }
+            );
+
+        }, [
+            devices,
+            antivirusRequired,
+            firewallRequired,
+            backupRequired
+        ]);
+
+
+    // =====================================================
+    // STYLES
+    // =====================================================
+
+    const cardStyle = {
+        background: "#ffffff",
+        border: "1px solid #ddd",
+        borderRadius: "10px",
+        padding: "20px",
+        marginBottom: "20px"
+    };
+
+
+    // =====================================================
+    // RENDER
+    // =====================================================
 
     return (
-        <div>
 
-            <h2>Security Alerts</h2>
+        <div
+            style={{
+                padding: "25px",
+                background: "#f6f8fb",
+                minHeight:
+                    "calc(100vh - 70px)",
+                boxSizing: "border-box"
+            }}
+        >
 
-            {atRiskDevices.length === 0 ? (
+            {/* =================================================
+                HEADER
+            ================================================= */}
 
-                <div className="no-alerts">
-                    <h3>✅ No Security Alerts</h3>
-                    <p>
-                        All devices are currently following
-                        the company security policy.
+            <div
+                style={{
+                    marginBottom: "25px"
+                }}
+            >
+
+                <h1
+                    style={{
+                        margin:
+                            "0 0 8px 0"
+                    }}
+                >
+                    Security Alerts
+                </h1>
+
+                <p
+                    style={{
+                        margin: 0,
+                        color: "#666"
+                    }}
+                >
+                    Devices that do not meet
+                    the current security policy.
+                </p>
+
+            </div>
+
+
+            {/* =================================================
+                SUMMARY
+            ================================================= */}
+
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                        "1fr 1fr",
+                    gap: "20px",
+                    marginBottom: "20px"
+                }}
+            >
+
+                <div style={cardStyle}>
+
+                    <p
+                        style={{
+                            margin: 0,
+                            color: "#777"
+                        }}
+                    >
+                        At Risk Devices
                     </p>
+
+                    <h2
+                        style={{
+                            margin:
+                                "8px 0 0 0",
+                            fontSize: "32px",
+                            color:
+                                atRiskDevices.length >
+                                0
+                                    ? "#d32f2f"
+                                    : "#2e7d32"
+                        }}
+                    >
+                        {atRiskDevices.length}
+                    </h2>
+
+                </div>
+
+
+                <div style={cardStyle}>
+
+                    <p
+                        style={{
+                            margin: 0,
+                            color: "#777"
+                        }}
+                    >
+                        Security Alerts
+                    </p>
+
+                    <h2
+                        style={{
+                            margin:
+                                "8px 0 0 0",
+                            fontSize: "32px",
+                            color:
+                                alerts.length > 0
+                                    ? "#d32f2f"
+                                    : "#2e7d32"
+                        }}
+                    >
+                        {alerts.length}
+                    </h2>
+
+                </div>
+
+            </div>
+
+
+            {/* =================================================
+                NO ALERTS
+            ================================================= */}
+
+            {alerts.length === 0 ? (
+
+                <div
+                    style={{
+                        ...cardStyle,
+                        textAlign: "center",
+                        padding: "50px"
+                    }}
+                >
+
+                    <h2
+                        style={{
+                            color: "#2e7d32"
+                        }}
+                    >
+                        ✓ No Security Alerts
+                    </h2>
+
+                    <p
+                        style={{
+                            color: "#777"
+                        }}
+                    >
+                        All devices currently meet
+                        the security policy.
+                    </p>
+
                 </div>
 
             ) : (
 
-                <div className="alert-list">
+                /* =================================================
+                   ALERT TABLE
+                ================================================= */
 
-                    {atRiskDevices.map(device => {
+                <div
+                    style={{
+                        ...cardStyle,
+                        padding: 0,
+                        overflow: "hidden"
+                    }}
+                >
 
-                        return (
-                            <div
-                                className="alert-card"
-                                key={device.id}
+                    <table
+                        style={{
+                            width: "100%",
+                            borderCollapse:
+                                "collapse"
+                        }}
+                    >
+
+                        <thead>
+
+                            <tr
+                                style={{
+                                    background:
+                                        "#f5f5f5",
+                                    textAlign:
+                                        "left"
+                                }}
                             >
 
-                                <h3>
-                                    ⚠️ {device.name}
-                                </h3>
+                                <th
+                                    style={{
+                                        padding:
+                                            "14px"
+                                    }}
+                                >
+                                    Device
+                                </th>
 
-                                <p>
-                                    This device does not meet
-                                    the company security policy.
-                                </p>
+                                <th
+                                    style={{
+                                        padding:
+                                            "14px"
+                                    }}
+                                >
+                                    Employee
+                                </th>
 
-                                {securityPolicy.antivirusRequired &&
-                                    !device.antivirus && (
-                                        <p>
-                                            ❌ Antivirus is not protected
-                                        </p>
-                                    )
-                                }
+                                <th
+                                    style={{
+                                        padding:
+                                            "14px"
+                                    }}
+                                >
+                                    Department
+                                </th>
 
-                                {securityPolicy.firewallRequired &&
-                                    !device.firewall && (
-                                        <p>
-                                            ❌ Firewall is disabled
-                                        </p>
-                                    )
-                                }
+                                <th
+                                    style={{
+                                        padding:
+                                            "14px"
+                                    }}
+                                >
+                                    Problem
+                                </th>
 
-                                {securityPolicy.backupRequired &&
-                                    !device.backup && (
-                                        <p>
-                                            ❌ Backup is not available
-                                        </p>
-                                    )
-                                }
+                                <th
+                                    style={{
+                                        padding:
+                                            "14px"
+                                    }}
+                                >
+                                    Severity
+                                </th>
 
-                            </div>
-                        );
+                                <th
+                                    style={{
+                                        padding:
+                                            "14px"
+                                    }}
+                                >
+                                    Details
+                                </th>
 
-                    })}
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            {alerts.map(
+                                alert => (
+
+                                    <tr
+                                        key={
+                                            alert.id
+                                        }
+                                        style={{
+                                            borderTop:
+                                                "1px solid #eee"
+                                        }}
+                                    >
+
+                                        <td
+                                            style={{
+                                                padding:
+                                                    "14px"
+                                            }}
+                                        >
+                                            <strong>
+                                                {
+                                                    alert.device
+                                                }
+                                            </strong>
+                                        </td>
+
+
+                                        <td
+                                            style={{
+                                                padding:
+                                                    "14px"
+                                            }}
+                                        >
+                                            {
+                                                alert.employee
+                                            }
+                                        </td>
+
+
+                                        <td
+                                            style={{
+                                                padding:
+                                                    "14px"
+                                            }}
+                                        >
+                                            {
+                                                alert.department
+                                            }
+                                        </td>
+
+
+                                        <td
+                                            style={{
+                                                padding:
+                                                    "14px"
+                                            }}
+                                        >
+                                            {alert.type}
+                                        </td>
+
+
+                                        <td
+                                            style={{
+                                                padding:
+                                                    "14px"
+                                            }}
+                                        >
+
+                                            <span
+                                                style={{
+                                                    display:
+                                                        "inline-block",
+                                                    padding:
+                                                        "5px 10px",
+                                                    borderRadius:
+                                                        "20px",
+                                                    background:
+                                                        alert.severity ===
+                                                        "High"
+                                                            ? "#fde8e8"
+                                                            : "#fff3cd",
+                                                    color:
+                                                        alert.severity ===
+                                                        "High"
+                                                            ? "#c62828"
+                                                            : "#856404",
+                                                    fontSize:
+                                                        "12px",
+                                                    fontWeight:
+                                                        "bold"
+                                                }}
+                                            >
+                                                {
+                                                    alert.severity
+                                                }
+                                            </span>
+
+                                        </td>
+
+
+                                        <td
+                                            style={{
+                                                padding:
+                                                    "14px"
+                                            }}
+                                        >
+                                            {
+                                                alert.message
+                                            }
+                                        </td>
+
+                                    </tr>
+
+                                )
+                            )}
+
+                        </tbody>
+
+                    </table>
 
                 </div>
 
@@ -85,5 +589,6 @@ function SecurityAlerts({ devices, securityPolicy }) {
         </div>
     );
 }
+
 
 export default SecurityAlerts;

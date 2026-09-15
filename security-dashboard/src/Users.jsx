@@ -1,302 +1,478 @@
 import { useEffect, useState } from "react";
 
-function Users({ currentUser }) {
+function Users() {
 
-    const [users, setUsers] = useState([]);
+    const [users, setUsers] =
+        useState([]);
 
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [role, setRole] = useState("");
+    const [loading, setLoading] =
+        useState(true);
 
-    const [loading, setLoading] = useState(true);
+    const [error, setError] =
+        useState("");
 
+    const [showForm, setShowForm] =
+        useState(false);
 
-    // GET USERS FROM DATABASE
-    useEffect(() => {
+    const [name, setName] =
+        useState("");
 
-        fetch("http://localhost:5000/api/users")
+    const [email, setEmail] =
+        useState("");
 
-            .then(response => {
+    const [password, setPassword] =
+        useState("");
 
-                if (!response.ok) {
-                    throw new Error("Failed to load users");
-                }
+    const [role, setRole] =
+        useState("IT Staff");
 
-                return response.json();
-
-            })
-
-            .then(data => {
-
-                setUsers(data);
-                setLoading(false);
-
-            })
-
-            .catch(error => {
-
-                console.error(error);
-
-                alert("Failed to load users.");
-
-                setLoading(false);
-
-            });
-
-    }, []);
+    const [message, setMessage] =
+        useState("");
 
 
-    // ADD USER
-    async function addUser(event) {
+    // =====================================================
+    // LOAD USERS
+    // =====================================================
 
-        event.preventDefault();
-
-
-        const newUser = {
-
-            name: name,
-
-            email: email,
-
-            role: role
-
-        };
-
+    async function loadUsers() {
 
         try {
 
-            const response = await fetch(
-                "http://localhost:5000/api/users",
-                {
-                    method: "POST",
+            setLoading(true);
 
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+            setError("");
 
-                    body: JSON.stringify(newUser)
-                }
-            );
+            const token =
+                localStorage.getItem("token");
+
+
+            const response =
+                await fetch(
+                    "http://localhost:5000/api/users",
+                    {
+                        headers: {
+                            Authorization:
+                                `Bearer ${token}`
+                        }
+                    }
+                );
+
+
+            const data =
+                await response.json();
 
 
             if (!response.ok) {
 
                 throw new Error(
-                    "Failed to add user"
+                    data.error ||
+                    "Failed to load users"
                 );
 
             }
 
 
-            const savedUser =
+            setUsers(data);
+
+
+        } catch (err) {
+
+            console.error(err);
+
+            setError(
+                err.message
+            );
+
+        } finally {
+
+            setLoading(false);
+
+        }
+
+    }
+
+
+    // =====================================================
+    // LOAD USERS WHEN PAGE OPENS
+    // =====================================================
+
+    useEffect(() => {
+
+        loadUsers();
+
+    }, []);
+
+
+    // =====================================================
+    // ADD USER
+    // =====================================================
+
+    async function handleAddUser(event) {
+
+        event.preventDefault();
+
+        setError("");
+
+        setMessage("");
+
+
+        try {
+
+            const token =
+                localStorage.getItem("token");
+
+
+            const response =
+                await fetch(
+                    "http://localhost:5000/api/users",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+
+                            Authorization:
+                                `Bearer ${token}`
+                        },
+
+                        body: JSON.stringify({
+                            name,
+                            email,
+                            password,
+                            role
+                        })
+                    }
+                );
+
+
+            const data =
                 await response.json();
 
 
-            setUsers(previousUsers => [
+            if (!response.ok) {
 
-                ...previousUsers,
+                throw new Error(
+                    data.error ||
+                    "Failed to create user"
+                );
 
-                savedUser
+            }
 
-            ]);
+
+            setUsers(
+                previousUsers => [
+                    ...previousUsers,
+                    data
+                ]
+            );
 
 
             setName("");
 
             setEmail("");
 
-            setRole("");
+            setPassword("");
+
+            setRole("IT Staff");
+
+            setShowForm(false);
+
+            setMessage(
+                "User created successfully."
+            );
 
 
-            alert("User added successfully!");
+        } catch (err) {
 
+            console.error(err);
 
-        } catch (error) {
-
-            console.error(error);
-
-            alert("Failed to add user.");
+            setError(
+                err.message
+            );
 
         }
 
     }
 
 
+    // =====================================================
     // DELETE USER
-    async function deleteUser(id) {
+    // =====================================================
 
-        const confirmed = window.confirm(
-            "Are you sure you want to delete this user?"
-        );
+    async function handleDeleteUser(userId) {
+
+        const confirmed =
+            window.confirm(
+                "Are you sure you want to delete this user?"
+            );
 
 
         if (!confirmed) {
+
             return;
+
         }
 
 
         try {
 
-            const response = await fetch(
-                `http://localhost:5000/api/users/${id}`,
-                {
-                    method: "DELETE"
-                }
-            );
+            setError("");
+
+            setMessage("");
+
+
+            const token =
+                localStorage.getItem("token");
+
+
+            const response =
+                await fetch(
+                    `http://localhost:5000/api/users/${userId}`,
+                    {
+                        method: "DELETE",
+
+                        headers: {
+                            Authorization:
+                                `Bearer ${token}`
+                        }
+                    }
+                );
+
+
+            const data =
+                await response.json();
 
 
             if (!response.ok) {
 
                 throw new Error(
+                    data.error ||
                     "Failed to delete user"
                 );
 
             }
 
 
-            setUsers(previousUsers =>
-                previousUsers.filter(
-                    user => user.id !== id
-                )
+            setUsers(
+                previousUsers =>
+                    previousUsers.filter(
+                        user =>
+                            user.id !== userId
+                    )
             );
 
 
-            alert(
-                "User deleted successfully!"
+            setMessage(
+                "User deleted successfully."
             );
 
 
-        } catch (error) {
+        } catch (err) {
 
-            console.error(error);
+            console.error(err);
 
-            alert("Failed to delete user.");
+            setError(
+                err.message
+            );
 
         }
 
     }
 
 
+    // =====================================================
+    // LOADING
+    // =====================================================
+
+    if (loading) {
+
+        return (
+
+            <div>
+
+                <h2>
+                    Users
+                </h2>
+
+                <p>
+                    Loading users...
+                </p>
+
+            </div>
+
+        );
+
+    }
+
+
+    // =====================================================
+    // PAGE
+    // =====================================================
+
     return (
 
         <div>
 
             <h2>
-                Users & Roles
+                Users
             </h2>
 
 
-            <div className="current-user-card">
+            {message && (
 
-                <h3>
-                    Current User
-                </h3>
+                <div className="success-message">
 
-                <p>
-                    <strong>Name:</strong>{" "}
-                    {currentUser.name}
-                </p>
+                    ✅ {message}
 
-                <p>
-                    <strong>Role:</strong>{" "}
-                    {currentUser.role}
-                </p>
+                </div>
 
-            </div>
+            )}
 
 
-            {currentUser.role === "Administrator" && (
+            {error && (
 
-                <div className="user-form">
+                <div className="error-message">
+
+                    ❌ {error}
+
+                </div>
+
+            )}
+
+
+            <button
+                onClick={() =>
+                    setShowForm(
+                        !showForm
+                    )
+                }
+            >
+                {showForm
+                    ? "Cancel"
+                    : "+ Add User"}
+            </button>
+
+
+            {/* =====================================================
+                ADD USER FORM
+            ===================================================== */}
+
+            {showForm && (
+
+                <div className="settings-card">
 
                     <h3>
-                        Add User
+                        Add New User
                     </h3>
 
 
-                    <form onSubmit={addUser}>
+                    <form
+                        onSubmit={
+                            handleAddUser
+                        }
+                    >
 
-                        <label>
-                            Full Name
-                        </label>
+                        <div>
 
-                        <br />
+                            <label>
+                                Name
+                            </label>
 
-                        <input
-                            type="text"
-                            placeholder="Enter full name"
-                            value={name}
-                            onChange={event =>
-                                setName(event.target.value)
-                            }
-                            required
-                        />
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={(event) =>
+                                    setName(
+                                        event.target.value
+                                    )
+                                }
+                                placeholder="Enter name"
+                                required
+                            />
 
-
-                        <br />
-                        <br />
-
-
-                        <label>
-                            Email
-                        </label>
-
-                        <br />
-
-                        <input
-                            type="email"
-                            placeholder="Enter email"
-                            value={email}
-                            onChange={event =>
-                                setEmail(event.target.value)
-                            }
-                            required
-                        />
+                        </div>
 
 
-                        <br />
-                        <br />
+                        <div>
+
+                            <label>
+                                Email
+                            </label>
+
+                            <input
+                                type="email"
+                                value={email}
+                                onChange={(event) =>
+                                    setEmail(
+                                        event.target.value
+                                    )
+                                }
+                                placeholder="Enter email"
+                                required
+                            />
+
+                        </div>
 
 
-                        <label>
-                            Role
-                        </label>
+                        <div>
 
-                        <br />
+                            <label>
+                                Password
+                            </label>
 
-                        <select
-                            value={role}
-                            onChange={event =>
-                                setRole(event.target.value)
-                            }
-                            required
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(event) =>
+                                    setPassword(
+                                        event.target.value
+                                    )
+                                }
+                                placeholder="Minimum 6 characters"
+                                minLength="6"
+                                required
+                            />
+
+                        </div>
+
+
+                        <div>
+
+                            <label>
+                                Role
+                            </label>
+
+                            <select
+                                value={role}
+                                onChange={(event) =>
+                                    setRole(
+                                        event.target.value
+                                    )
+                                }
+                            >
+
+                                <option value="Administrator">
+                                    Administrator
+                                </option>
+
+                                <option value="IT Manager">
+                                    IT Manager
+                                </option>
+
+                                <option value="IT Staff">
+                                    IT Staff
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <button
+                            type="submit"
                         >
-
-                            <option value="">
-                                Select Role
-                            </option>
-
-                            <option value="Administrator">
-                                Administrator
-                            </option>
-
-                            <option value="IT Manager">
-                                IT Manager
-                            </option>
-
-                            <option value="IT Staff">
-                                IT Staff
-                            </option>
-
-                        </select>
-
-
-                        <br />
-                        <br />
-
-
-                        <button type="submit">
-                            Add User
+                            Create User
                         </button>
 
                     </form>
@@ -306,97 +482,88 @@ function Users({ currentUser }) {
             )}
 
 
-            {currentUser.role !== "Administrator" && (
+            {/* =====================================================
+                USERS TABLE
+            ===================================================== */}
 
-                <div className="permission-message">
+            <div className="table-container">
 
-                    <h3>
-                        🔒 Permission Restricted
-                    </h3>
+                <table>
 
-                    <p>
-                        Only Administrators can manage
-                        system users.
-                    </p>
+                    <thead>
 
-                </div>
+                        <tr>
 
-            )}
+                            <th>
+                                ID
+                            </th>
+
+                            <th>
+                                Name
+                            </th>
+
+                            <th>
+                                Email
+                            </th>
+
+                            <th>
+                                Role
+                            </th>
+
+                            <th>
+                                Action
+                            </th>
+
+                        </tr>
+
+                    </thead>
 
 
-            <div className="users-section">
-
-                <h3>
-                    System Users
-                </h3>
-
-
-                {loading ? (
-
-                    <p>
-                        Loading users from database...
-                    </p>
-
-                ) : users.length === 0 ? (
-
-                    <p>
-                        No users have been added yet.
-                    </p>
-
-                ) : (
-
-                    <div className="user-list">
+                    <tbody>
 
                         {users.map(user => (
 
-                            <div
-                                className="user-card"
+                            <tr
                                 key={user.id}
                             >
 
-                                <h3>
-                                    👤 {user.name}
-                                </h3>
+                                <td>
+                                    {user.id}
+                                </td>
 
+                                <td>
+                                    {user.name}
+                                </td>
 
-                                <p>
-                                    <strong>
-                                        Email:
-                                    </strong>{" "}
+                                <td>
                                     {user.email}
-                                </p>
+                                </td>
 
-
-                                <p>
-                                    <strong>
-                                        Role:
-                                    </strong>{" "}
+                                <td>
                                     {user.role}
-                                </p>
+                                </td>
 
-
-                                {currentUser.role ===
-                                    "Administrator" && (
+                                <td>
 
                                     <button
                                         onClick={() =>
-                                            deleteUser(
+                                            handleDeleteUser(
                                                 user.id
                                             )
                                         }
                                     >
-                                        🗑️ Delete User
+                                        Delete
                                     </button>
 
-                                )}
+                                </td>
 
-                            </div>
+                            </tr>
 
                         ))}
 
-                    </div>
+                    </tbody>
 
-                )}
+                </table>
 
             </div>
 
@@ -405,5 +572,6 @@ function Users({ currentUser }) {
     );
 
 }
+
 
 export default Users;

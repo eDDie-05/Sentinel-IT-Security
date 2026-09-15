@@ -1,104 +1,532 @@
 import { useEffect, useState } from "react";
-import "./App.css";
 
 import Login from "./Login";
 import Sidebar from "./Sidebar";
 import Dashboard from "./Dashboard";
-import AddDevice from "./AddDevice";
 import DeviceList from "./DeviceList";
+import AddDevice from "./AddDevice";
 import SecurityAlerts from "./SecurityAlerts";
 import SecuritySettings from "./SecuritySettings";
 import Users from "./Users";
+import AuditLogs from "./AuditLogs";
 
-import {
-    initialSecurityPolicy
-} from "./data/initialData";
+import "./App.css";
 
 
 function App() {
 
-    const [devices, setDevices] = useState([]);
+    // =====================================================
+    // CURRENT USER
+    // =====================================================
 
-    const [page, setPage] = useState("dashboard");
+    const [currentUser, setCurrentUser] =
+        useState(null);
 
-    const [currentUser, setCurrentUser] = useState(null);
+
+    // =====================================================
+    // CURRENT PAGE
+    // =====================================================
+
+    const [page, setPage] =
+        useState("dashboard");
+
+
+    // =====================================================
+    // DEVICES
+    // =====================================================
+
+    const [devices, setDevices] =
+        useState([]);
+
+
+    // =====================================================
+    // SECURITY POLICY
+    // =====================================================
 
     const [securityPolicy, setSecurityPolicy] =
-        useState(initialSecurityPolicy);
+        useState({
+            antivirusRequired: true,
+            firewallRequired: true,
+            backupRequired: true
+        });
 
-    const [loading, setLoading] = useState(true);
 
+    // =====================================================
+    // RESTORE LOGIN AFTER REFRESH
+    // =====================================================
 
     useEffect(() => {
 
-        fetch("http://localhost:5000/api/devices")
+        const token =
+            localStorage.getItem("token");
 
-            .then(response => response.json())
+        if (!token) {
+            return;
+        }
 
-            .then(data => {
+        try {
 
-                setDevices(data);
-
-                setLoading(false);
-
-            })
-
-            .catch(error => {
-
-                console.error(
-                    "Error connecting to backend:",
-                    error
+            const payload =
+                JSON.parse(
+                    atob(
+                        token.split(".")[1]
+                    )
                 );
 
-                setLoading(false);
 
+            if (
+                payload.exp &&
+                payload.exp * 1000 < Date.now()
+            ) {
+
+                localStorage.removeItem(
+                    "token"
+                );
+
+                return;
+            }
+
+
+            setCurrentUser({
+                id: payload.id,
+                name: payload.name,
+                email: payload.email,
+                role: payload.role
             });
+
+        } catch (error) {
+
+            console.error(
+                "Invalid token:",
+                error
+            );
+
+            localStorage.removeItem(
+                "token"
+            );
+        }
 
     }, []);
 
 
-    if (!currentUser) {
+    // =====================================================
+    // LOAD DEVICES
+    // =====================================================
 
-        return (
-            <Login
-                setCurrentUser={setCurrentUser}
-            />
+    useEffect(() => {
+
+        if (!currentUser) {
+            return;
+        }
+
+
+        async function loadDevices() {
+
+            try {
+
+                const token =
+                    localStorage.getItem(
+                        "token"
+                    );
+
+
+                const response =
+                    await fetch(
+                        "http://localhost:5000/api/devices",
+                        {
+                            headers: {
+                                Authorization:
+                                    `Bearer ${token}`
+                            }
+                        }
+                    );
+
+
+                if (
+                    response.status === 401 ||
+                    response.status === 403
+                ) {
+
+                    handleLogout();
+
+                    return;
+                }
+
+
+                const data =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.error ||
+                        "Failed to load devices"
+                    );
+                }
+
+
+                setDevices(data);
+
+            } catch (error) {
+
+                console.error(
+                    "Device loading error:",
+                    error
+                );
+            }
+        }
+
+
+        loadDevices();
+
+    }, [currentUser]);
+
+
+    // =====================================================
+    // LOAD SECURITY POLICY
+    // =====================================================
+
+    useEffect(() => {
+
+        if (!currentUser) {
+            return;
+        }
+
+
+        async function loadSecurityPolicy() {
+
+            try {
+
+                const token =
+                    localStorage.getItem(
+                        "token"
+                    );
+
+
+                const response =
+                    await fetch(
+                        "http://localhost:5000/api/security-policy",
+                        {
+                            headers: {
+                                Authorization:
+                                    `Bearer ${token}`
+                            }
+                        }
+                    );
+
+
+                if (
+                    response.status === 401 ||
+                    response.status === 403
+                ) {
+
+                    handleLogout();
+
+                    return;
+                }
+
+
+                const data =
+                    await response.json();
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        data.error ||
+                        "Failed to load security policy"
+                    );
+                }
+
+
+                setSecurityPolicy(data);
+
+            } catch (error) {
+
+                console.error(
+                    "Security policy loading error:",
+                    error
+                );
+            }
+        }
+
+
+        loadSecurityPolicy();
+
+    }, [currentUser]);
+
+
+    // =====================================================
+    // LOGIN
+    // =====================================================
+
+    function handleLogin(user) {
+
+        localStorage.setItem(
+            "token",
+            user.token
         );
-    }
 
 
-    function logout() {
+        setCurrentUser({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: user.role
+        });
 
-        setCurrentUser(null);
 
         setPage("dashboard");
     }
 
 
-    function handlePageChange(selectedPage) {
+    // =====================================================
+    // LOGOUT
+    // =====================================================
 
-        if (
-            selectedPage === "users" &&
-            currentUser.role !== "Administrator"
-        ) {
-            setPage("dashboard");
-            return;
-        }
+    function handleLogout() {
 
-
-        if (
-            selectedPage === "settings" &&
-            currentUser.role !== "Administrator" &&
-            currentUser.role !== "IT Manager"
-        ) {
-            setPage("dashboard");
-            return;
-        }
+        localStorage.removeItem(
+            "token"
+        );
 
 
-        setPage(selectedPage);
+        setCurrentUser(null);
+
+
+        setDevices([]);
+
+
+        setPage("dashboard");
     }
 
+
+    // =====================================================
+    // IF NOT LOGGED IN
+    // =====================================================
+
+    if (!currentUser) {
+
+        return (
+            <Login
+                onLogin={handleLogin}
+            />
+        );
+    }
+
+
+    // =====================================================
+    // DEVICE ADDED
+    // =====================================================
+
+    function handleDeviceAdded(
+        newDevice
+    ) {
+
+        setDevices(
+            previousDevices => [
+                ...previousDevices,
+                newDevice
+            ]
+        );
+
+
+        setPage("devices");
+    }
+
+
+    // =====================================================
+    // DELETE DEVICE
+    // =====================================================
+
+    function handleDeviceDeleted(
+        deviceId
+    ) {
+
+        setDevices(
+            previousDevices =>
+                previousDevices.filter(
+                    device =>
+                        device.id !== deviceId
+                )
+        );
+    }
+
+
+    // =====================================================
+    // UPDATE DEVICE
+    // =====================================================
+
+    function handleDeviceUpdated(
+        updatedDevice
+    ) {
+
+        setDevices(
+            previousDevices =>
+                previousDevices.map(
+                    device =>
+                        device.id ===
+                        updatedDevice.id
+                            ? updatedDevice
+                            : device
+                )
+        );
+    }
+
+
+    // =====================================================
+    // PAGE CONTENT
+    // =====================================================
+
+    function renderPage() {
+
+        switch (page) {
+
+
+            // =================================================
+            // DASHBOARD
+            // =================================================
+
+            case "dashboard":
+
+                return (
+                    <Dashboard
+                        devices={devices}
+                        securityPolicy={
+                            securityPolicy
+                        }
+                    />
+                );
+
+
+            // =================================================
+            // DEVICES
+            // =================================================
+
+            case "devices":
+
+                return (
+                    <DeviceList
+                        devices={devices}
+                        setDevices={setDevices}
+                        userRole={
+                            currentUser.role
+                        }
+                        securityPolicy={
+                            securityPolicy
+                        }
+                        onDeviceDeleted={
+                            handleDeviceDeleted
+                        }
+                        onDeviceUpdated={
+                            handleDeviceUpdated
+                        }
+                    />
+                );
+
+
+            // =================================================
+            // ADD DEVICE
+            // =================================================
+
+            case "add-device":
+
+                return (
+                    <AddDevice
+                        setDevices={
+                            setDevices
+                        }
+                        userRole={
+                            currentUser.role
+                        }
+                        onDeviceAdded={
+                            handleDeviceAdded
+                        }
+                    />
+                );
+
+
+            // =================================================
+            // SECURITY ALERTS
+            // =================================================
+
+            case "alerts":
+
+                return (
+                    <SecurityAlerts
+                        devices={devices}
+                        securityPolicy={
+                            securityPolicy
+                        }
+                    />
+                );
+
+
+            // =================================================
+            // SETTINGS
+            // =================================================
+
+            case "settings":
+
+                return (
+                    <SecuritySettings
+                        securityPolicy={
+                            securityPolicy
+                        }
+                        setSecurityPolicy={
+                            setSecurityPolicy
+                        }
+                        userRole={
+                            currentUser.role
+                        }
+                    />
+                );
+
+
+            // =================================================
+            // USERS
+            // =================================================
+
+            case "users":
+
+                return (
+                    <Users />
+                );
+
+
+            // =================================================
+            // AUDIT LOGS
+            // =================================================
+
+            case "audit-logs":
+
+                return (
+                    <AuditLogs />
+                );
+
+
+            // =================================================
+            // DEFAULT
+            // =================================================
+
+            default:
+
+                return (
+                    <Dashboard
+                        devices={devices}
+                        securityPolicy={
+                            securityPolicy
+                        }
+                    />
+                );
+        }
+    }
+
+
+    // =====================================================
+    // MAIN APP
+    // =====================================================
 
     return (
 
@@ -106,35 +534,44 @@ function App() {
 
             <Sidebar
                 page={page}
-                setPage={handlePageChange}
-                userRole={currentUser.role}
+                setPage={setPage}
+                userRole={
+                    currentUser.role
+                }
             />
 
 
-            <main className="main-content">
+            <div className="main-content">
+
+
+                {/* TOP BAR */}
 
                 <div className="top-bar">
 
                     <div>
-
-                        <h1>
-                            Company Security System
-                        </h1>
-
-                        <p>
-                            Welcome, {currentUser.name}
-                        </p>
-
+                        <strong>
+                            Company IT Security
+                        </strong>
                     </div>
 
 
                     <div className="user-info">
 
                         <span>
-                            👤 {currentUser.role}
+                            👤 {currentUser.name}
                         </span>
 
-                        <button onClick={logout}>
+
+                        <span>
+                            {currentUser.role}
+                        </span>
+
+
+                        <button
+                            onClick={
+                                handleLogout
+                            }
+                        >
                             Logout
                         </button>
 
@@ -143,89 +580,13 @@ function App() {
                 </div>
 
 
-                {loading && (
-                    <p>
-                        Loading devices from server...
-                    </p>
-                )}
+                {/* PAGE CONTENT */}
 
+                <main>
+                    {renderPage()}
+                </main>
 
-                {!loading &&
-                    page === "dashboard" && (
-
-                    <Dashboard
-                        devices={devices}
-                        securityPolicy={securityPolicy}
-                    />
-
-                )}
-
-
-                {!loading &&
-                    page === "devices" && (
-
-                    <>
-
-                        {(currentUser.role === "Administrator" ||
-                            currentUser.role === "IT Manager") && (
-
-                            <AddDevice
-                                setDevices={setDevices}
-                            />
-
-                        )}
-
-
-                        <DeviceList
-                            devices={devices}
-                            setDevices={setDevices}
-                            securityPolicy={securityPolicy}
-                            userRole={currentUser.role}
-                        />
-
-                    </>
-
-                )}
-
-
-                {!loading &&
-                    page === "alerts" && (
-
-                    <SecurityAlerts
-                        devices={devices}
-                        securityPolicy={securityPolicy}
-                    />
-
-                )}
-
-
-                {page === "users" &&
-                    currentUser.role === "Administrator" && (
-
-                    <Users
-                        currentUser={currentUser}
-                        setCurrentUser={setCurrentUser}
-                    />
-
-                )}
-
-
-                {page === "settings" &&
-                    (
-                        currentUser.role === "Administrator" ||
-                        currentUser.role === "IT Manager"
-                    ) && (
-
-                    <SecuritySettings
-                        securityPolicy={securityPolicy}
-                        setSecurityPolicy={
-                            setSecurityPolicy
-                        }
-                    />
-
-                )}
-
-            </main>
+            </div>
 
         </div>
     );

@@ -1,14 +1,18 @@
 import { useState } from "react";
 
-function Login({ setCurrentUser }) {
+function Login({ onLogin }) {
 
-    const [email, setEmail] = useState("");
+    const [email, setEmail] =
+        useState("");
 
-    const [role, setRole] = useState("");
+    const [password, setPassword] =
+        useState("");
 
-    const [error, setError] = useState("");
+    const [error, setError] =
+        useState("");
 
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] =
+        useState(false);
 
 
     async function handleLogin(event) {
@@ -22,54 +26,59 @@ function Login({ setCurrentUser }) {
 
         try {
 
-            const response = await fetch(
-                "http://localhost:5000/api/login",
-                {
-                    method: "POST",
+            const response =
+                await fetch(
+                    "http://localhost:5000/api/login",
+                    {
+                        method: "POST",
 
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
 
-                    body: JSON.stringify({
-                        email: email,
-                        role: role
-                    })
-                }
-            );
+                        body: JSON.stringify({
+                            email,
+                            password
+                        })
+                    }
+                );
 
 
-            const data = await response.json();
+            const data =
+                await response.json();
 
 
             if (!response.ok) {
 
-                throw new Error(
-                    data.error || "Login failed"
+                setError(
+                    data.error ||
+                    "Login failed"
                 );
+
+                setLoading(false);
+
+                return;
 
             }
 
 
-            setCurrentUser({
+            // Send the logged-in user
+            // back to App.jsx
 
-                id: data.id,
-
-                name: data.name,
-
-                email: data.email,
-
-                role: data.role
-
-            });
+            onLogin(data);
 
 
         } catch (error) {
 
-            console.error(error);
+            console.error(
+                "Login error:",
+                error
+            );
+
 
             setError(
-                error.message
+                "Cannot connect to the server."
             );
 
         } finally {
@@ -88,82 +97,67 @@ function Login({ setCurrentUser }) {
             <div className="login-card">
 
                 <h1>
-                    IT Security
+                    Company IT Security
                 </h1>
-
 
                 <h2>
                     Login
                 </h2>
 
 
-                <p>
-                    Company Security Management System
-                </p>
+                <form
+                    onSubmit={handleLogin}
+                >
+
+                    <div>
+
+                        <label>
+                            Email
+                        </label>
+
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(event) =>
+                                setEmail(
+                                    event.target.value
+                                )
+                            }
+                            placeholder="Enter your email"
+                            required
+                        />
+
+                    </div>
 
 
-                <form onSubmit={handleLogin}>
+                    <div>
 
-                    <label>
-                        Email
-                    </label>
+                        <label>
+                            Password
+                        </label>
 
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(event) =>
+                                setPassword(
+                                    event.target.value
+                                )
+                            }
+                            placeholder="Enter your password"
+                            required
+                        />
 
-                    <input
-                        type="email"
-                        placeholder="Enter your email"
-                        value={email}
-                        onChange={event =>
-                            setEmail(
-                                event.target.value
-                            )
-                        }
-                        required
-                    />
-
-
-                    <br />
-
-
-                    <label>
-                        Role
-                    </label>
-
-
-                    <select
-                        value={role}
-                        onChange={event =>
-                            setRole(
-                                event.target.value
-                            )
-                        }
-                        required
-                    >
-
-                        <option value="">
-                            Select Role
-                        </option>
-
-                        <option value="Administrator">
-                            Administrator
-                        </option>
-
-                        <option value="IT Manager">
-                            IT Manager
-                        </option>
-
-                        <option value="IT Staff">
-                            IT Staff
-                        </option>
-
-                    </select>
+                    </div>
 
 
                     {error && (
 
-                        <p className="login-error">
-                            ❌ {error}
-                        </p>
+                        <div className="login-error">
+
+                            {error}
+
+                        </div>
 
                     )}
 
