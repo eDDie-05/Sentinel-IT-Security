@@ -48,7 +48,7 @@ function Login({ onLogin }) {
   }
   return <div className="login-shell">
     <div className="login-visual">
-      <div className="brand-mark">S</div><div className="brand-name">SENTINEL</div>
+      <div className="brand-mark">e</div><div className="brand-name">eDDie</div>
       <h1>Company IT<br/><span>Security Center</span></h1>
       <p>Centralized visibility, policy enforcement and security operations for company endpoints.</p>
       <div className="security-points"><span>✓ Endpoint monitoring</span><span>✓ Policy compliance</span><span>✓ Audit accountability</span></div>
@@ -68,7 +68,7 @@ function Sidebar({page,setPage,user,onLogout}) {
   const admin=user.role==="Administrator", manager=admin||user.role==="IT Manager";
   const nav=[["dashboard","⌂","Overview"],["devices","▣","Devices"],["alerts","⚠","Security Alerts"]];
   return <aside className="sidebar">
-    <div className="side-brand"><div className="brand-mark small">S</div><div><b>SENTINEL</b><small>IT SECURITY</small></div></div>
+    <div className="side-brand"><div className="brand-mark small">e</div><div><b>eDDie</b><small>IT SECURITY</small></div></div>
     <div className="side-label">WORKSPACE</div>
     {nav.map(([id,ic,label])=><button key={id} className={page===id?"nav active":"nav"} onClick={()=>setPage(id)}><span>{ic}</span>{label}{id==="alerts"&&<span className="nav-dot"/>}</button>)}
     <div className="side-label">ADMINISTRATION</div>
