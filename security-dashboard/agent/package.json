@@ -1,0 +1,9 @@
+{
+  "name": "sentinel-agent",
+  "version": "1.0.0",
+  "description": "Sentinel IT Security monitoring agent",
+  "main": "agent.js",
+  "scripts": {
+    "start": "node agent.js"
+  }
+}
