@@ -1902,9 +1902,6 @@ async function refreshDeviceSecurityStatuses() {
    ROOT
 ========================================================= */
 
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "..", "dist", "index.html"));
-});
 
 /* =========================================================
    HEALTH
@@ -6317,11 +6314,13 @@ async function startServer() {
 
     await refreshDeviceSecurityStatuses();
 
-    // Serve React frontend
-app.use(express.static(path.join(__dirname, "..", "dist")));
+   // Serve React frontend
+const frontendPath = path.join(process.cwd(), "dist");
 
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(__dirname, "..", "dist", "index.html"));
+app.use(express.static(frontendPath));
+
+app.get("/*", (req, res) => {
+  res.sendFile(path.join(frontendPath, "index.html"));
 });
 
     app.listen(
