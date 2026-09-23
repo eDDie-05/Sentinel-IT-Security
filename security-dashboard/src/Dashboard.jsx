@@ -1,2507 +1,1985 @@
-function Dashboard({
-    devices = [],
-    securityPolicy = {}
-}) {
+import { useEffect, useMemo, useState } from "react";
 
-    // =========================================
-    // BASIC DATA
-    // =========================================
+const API = "http://localhost:5000/api";
 
-    const deviceList =
-        Array.isArray(devices)
-            ? devices
-            : [];
-
-    const totalDevices =
-        deviceList.length;
-
-
-    // =========================================
-    // ONLINE / OFFLINE HELPER
-    // =========================================
-
-    function isDeviceOnline(device) {
-
-        return (
-            device.online === true ||
-            device.online === "true" ||
-            device.online === 1 ||
-            device.online === "1" ||
-            String(
-                device.connection_status || ""
-            ).toUpperCase() === "ONLINE"
-        );
-    }
-
-
-    // =========================================
-    // SECURITY STATUS HELPERS
-    // =========================================
-
-    function getControlStatus(
-        device,
-        control
-    ) {
-
-        const statusField =
-            device[`${control}_status`];
-
-        if (
-            typeof statusField === "string" &&
-            statusField.trim().length > 0
-        ) {
-            return statusField.toUpperCase();
-        }
-
-
-        const value =
-            device[control];
-
-
-        if (
-            value === true ||
-            value === "true" ||
-            value === 1 ||
-            value === "1"
-        ) {
-            return "ENABLED";
-        }
-
-
-        if (
-            value === false ||
-            value === "false" ||
-            value === 0 ||
-            value === "0"
-        ) {
-            return "DISABLED";
-        }
-
-
-        return "UNKNOWN";
-    }
-
-
-    function getSecurityStatus(device) {
-
-        /*
-         * An offline computer should not be
-         * considered secure because the system
-         * cannot currently verify its condition.
-         */
-        if (!isDeviceOnline(device)) {
-            return "AT RISK";
-        }
-
-
-        /*
-         * Use the security status calculated
-         * by the backend when available.
-         */
-        const backendStatus =
-            String(
-                device.security_status || ""
-            ).toUpperCase();
-
-
-        if (
-            backendStatus === "SECURE" ||
-            backendStatus === "AT RISK" ||
-            backendStatus === "UNKNOWN"
-        ) {
-            return backendStatus;
-        }
-
-
-        const antivirus =
-            getControlStatus(
-                device,
-                "antivirus"
-            );
-
-
-        const firewall =
-            getControlStatus(
-                device,
-                "firewall"
-            );
-
-
-        const backup =
-            getControlStatus(
-                device,
-                "backup"
-            );
-
-
-        const antivirusRequired =
-            securityPolicy.antivirus_required !== false;
-
-
-        const firewallRequired =
-            securityPolicy.firewall_required !== false;
-
-
-        const backupRequired =
-            securityPolicy.backup_required !== false;
-
-
-        if (
-            (antivirusRequired &&
-                antivirus === "DISABLED") ||
-
-            (firewallRequired &&
-                firewall === "DISABLED") ||
-
-            (backupRequired &&
-                backup === "DISABLED")
-        ) {
-            return "AT RISK";
-        }
-
-
-        if (
-            (antivirusRequired &&
-                antivirus === "UNKNOWN") ||
-
-            (firewallRequired &&
-                firewall === "UNKNOWN") ||
-
-            (backupRequired &&
-                backup === "UNKNOWN")
-        ) {
-            return "UNKNOWN";
-        }
-
-
-        return "SECURE";
-    }
-
-
-    // =========================================
-    // DEVICE GROUPS
-    // =========================================
-
-    const secureDevices =
-        deviceList.filter(
-            device =>
-                getSecurityStatus(device) === "SECURE"
-        );
-
-
-    const atRiskDevices =
-        deviceList.filter(
-            device =>
-                getSecurityStatus(device) === "AT RISK"
-        );
-
-
-    const unknownDevices =
-        deviceList.filter(
-            device =>
-                getSecurityStatus(device) === "UNKNOWN"
-        );
-
-
-    const onlineDevices =
-        deviceList.filter(
-            device =>
-                isDeviceOnline(device)
-        );
-
-
-    const offlineDevices =
-        deviceList.filter(
-            device =>
-                !isDeviceOnline(device)
-        );
-
-
-    // =========================================
-    // PROTECTION RATE
-    // =========================================
-
-    const protectionRate =
-        totalDevices === 0
-            ? 0
-            : Math.round(
-                (
-                    secureDevices.length /
-                    totalDevices
-                ) * 100
-            );
-
-
-    // =========================================
-    // CONTROL STATISTICS
-    // =========================================
-
-    const antivirusEnabled =
-        deviceList.filter(
-            device =>
-                getControlStatus(
-                    device,
-                    "antivirus"
-                ) === "ENABLED"
-        ).length;
-
-
-    const antivirusDisabled =
-        deviceList.filter(
-            device =>
-                getControlStatus(
-                    device,
-                    "antivirus"
-                ) === "DISABLED"
-        ).length;
-
-
-    const antivirusUnknown =
-        deviceList.filter(
-            device =>
-                getControlStatus(
-                    device,
-                    "antivirus"
-                ) === "UNKNOWN"
-        ).length;
-
-
-    const firewallEnabled =
-        deviceList.filter(
-            device =>
-                getControlStatus(
-                    device,
-                    "firewall"
-                ) === "ENABLED"
-        ).length;
-
-
-    const firewallDisabled =
-        deviceList.filter(
-            device =>
-                getControlStatus(
-                    device,
-                    "firewall"
-                ) === "DISABLED"
-        ).length;
-
-
-    const firewallUnknown =
-        deviceList.filter(
-            device =>
-                getControlStatus(
-                    device,
-                    "firewall"
-                ) === "UNKNOWN"
-        ).length;
-
-
-    const backupEnabled =
-        deviceList.filter(
-            device =>
-                getControlStatus(
-                    device,
-                    "backup"
-                ) === "ENABLED"
-        ).length;
-
-
-    const backupDisabled =
-        deviceList.filter(
-            device =>
-                getControlStatus(
-                    device,
-                    "backup"
-                ) === "DISABLED"
-        ).length;
-
-
-    const backupUnknown =
-        deviceList.filter(
-            device =>
-                getControlStatus(
-                    device,
-                    "backup"
-                ) === "UNKNOWN"
-        ).length;
-
-
-    // =========================================
-    // CARD STYLE
-    // =========================================
-
-    const cardStyle = {
-
-        background: "#ffffff",
-
-        border:
-            "1px solid #e1e5eb",
-
-        borderRadius: "12px",
-
-        padding: "20px",
-
-        boxSizing: "border-box",
-
-        boxShadow:
-            "0 2px 8px rgba(0,0,0,0.04)"
-    };
-
-
-    // =========================================
-    // FORMAT LAST SEEN
-    // =========================================
-
-    function formatLastSeen(value) {
-
-        if (!value) {
-            return "Never";
-        }
-
-
-        const date =
-            new Date(value);
-
-
-        if (
-            Number.isNaN(
-                date.getTime()
-            )
-        ) {
-            return "Unknown";
-        }
-
-
-        return date.toLocaleString();
-    }
-
-
-    // =========================================
-    // SECURITY VALUE
-    // =========================================
-
-    function securityValue(value) {
-
-        const status =
-            String(
-                value || "UNKNOWN"
-            ).toUpperCase();
-
-
-        if (status === "ENABLED") {
-
-            return {
-
-                text: "✓ Enabled",
-
-                color: "#2e7d32",
-
-                background: "#e8f5e9"
-            };
-        }
-
-
-        if (status === "DISABLED") {
-
-            return {
-
-                text: "✗ Disabled",
-
-                color: "#c62828",
-
-                background: "#fde8e8"
-            };
-        }
-
-
-        return {
-
-            text: "? Unknown",
-
-            color: "#b26a00",
-
-            background: "#fff4d6"
-        };
-    }
-
-
-    // =========================================
-    // CONNECTION STATUS
-    // =========================================
-
-    function statusBadge(device) {
-
-        const online =
-            isDeviceOnline(device);
-
-
-        if (online) {
-
-            return {
-
-                text: "ONLINE",
-
-                color: "#087f23",
-
-                background: "#e8f5e9"
-            };
-        }
-
-
-        return {
-
-            text: "OFFLINE",
-
-            color: "#c62828",
-
-            background: "#fde8e8"
-        };
-    }
-
-
-    // =========================================
-    // SECURITY BADGE
-    // =========================================
-
-    function securityBadge(status) {
-
-        if (status === "SECURE") {
-
-            return {
-
-                text: "SECURE",
-
-                color: "#2e7d32",
-
-                background: "#e8f5e9"
-            };
-        }
-
-
-        if (status === "AT RISK") {
-
-            return {
-
-                text: "AT RISK",
-
-                color: "#c62828",
-
-                background: "#fde8e8"
-            };
-        }
-
-
-        return {
-
-            text: "UNKNOWN",
-
-            color: "#b26a00",
-
-            background: "#fff4d6"
-        };
-    }
-
-
-    // =========================================
-    // MAIN UI
-    // =========================================
-
-    return (
-
-        <div
-            style={{
-
-                padding: "25px",
-
-                background: "#f6f8fb",
-
-                minHeight:
-                    "calc(100vh - 70px)"
-            }}
-        >
-
-            {/* =========================================
-                HEADER
-            ========================================= */}
-
-            <div
-                style={{
-
-                    display: "flex",
-
-                    justifyContent:
-                        "space-between",
-
-                    alignItems: "center",
-
-                    flexWrap: "wrap",
-
-                    gap: "15px"
-                }}
-            >
-
-                <div>
-
-                    <div
-                        style={{
-                            fontSize: "12px",
-                            fontWeight: "700",
-                            color: "#667085",
-                            letterSpacing: "0.5px",
-                            marginBottom: "5px"
-                        }}
-                    >
-                        SECURITY OPERATIONS CENTER
-                    </div>
-
-                    <h1
-                        style={{
-
-                            margin: 0,
-
-                            fontSize: "30px",
-
-                            color: "#101828"
-                        }}
-                    >
-                        Security Dashboard
-                    </h1>
-
-
-                    <p
-                        style={{
-
-                            color: "#667085",
-
-                            marginTop: "8px",
-
-                            fontSize: "14px"
-                        }}
-                    >
-                        Monitor company devices,
-                        security controls and
-                        system health.
-                    </p>
-
-                </div>
-
-
-                <div
-                    style={{
-
-                        padding:
-                            "8px 14px",
-
-                        borderRadius:
-                            "20px",
-
-                        background:
-                            "#e8f5e9",
-
-                        color:
-                            "#2e7d32",
-
-                        fontWeight:
-                            "600",
-
-                        fontSize:
-                            "13px"
-                    }}
-                >
-                    ● Sentinel Monitoring Active
-                </div>
-
-            </div>
-
-
-            {/* =========================================
-                SUMMARY CARDS
-            ========================================= */}
-
-            <div
-                style={{
-
-                    display: "grid",
-
-                    gridTemplateColumns:
-                        "repeat(auto-fit, minmax(200px, 1fr))",
-
-                    gap: "18px",
-
-                    marginTop: "25px"
-                }}
-            >
-
-                {/* TOTAL DEVICES */}
-
-                <div style={cardStyle}>
-
-                    <p
-                        style={{
-
-                            color: "#667085",
-
-                            margin: 0,
-
-                            fontWeight: "600"
-                        }}
-                    >
-                        Total Devices
-                    </p>
-
-
-                    <h2
-                        style={{
-
-                            fontSize: "32px",
-
-                            margin:
-                                "10px 0 0 0",
-
-                            color: "#101828"
-                        }}
-                    >
-                        {totalDevices}
-                    </h2>
-
-
-                    <small
-                        style={{
-                            color: "#667085"
-                        }}
-                    >
-                        Registered company
-                        computers
-                    </small>
-
-                </div>
-
-
-                {/* ONLINE DEVICES */}
-
-                <div style={cardStyle}>
-
-                    <p
-                        style={{
-
-                            color: "#667085",
-
-                            margin: 0,
-
-                            fontWeight: "600"
-                        }}
-                    >
-                        Online Devices
-                    </p>
-
-
-                    <h2
-                        style={{
-
-                            color: "#1a73e8",
-
-                            fontSize: "32px",
-
-                            margin:
-                                "10px 0 0 0"
-                        }}
-                    >
-                        {onlineDevices.length}
-                    </h2>
-
-
-                    <small
-                        style={{
-                            color: "#667085"
-                        }}
-                    >
-                        {offlineDevices.length}
-                        {" "}
-                        offline
-                    </small>
-
-                </div>
-
-
-                {/* SECURE DEVICES */}
-
-                <div style={cardStyle}>
-
-                    <p
-                        style={{
-
-                            color: "#667085",
-
-                            margin: 0,
-
-                            fontWeight: "600"
-                        }}
-                    >
-                        Secure Devices
-                    </p>
-
-
-                    <h2
-                        style={{
-
-                            color: "#2e7d32",
-
-                            fontSize: "32px",
-
-                            margin:
-                                "10px 0 0 0"
-                        }}
-                    >
-                        {secureDevices.length}
-                    </h2>
-
-
-                    <small
-                        style={{
-                            color: "#667085"
-                        }}
-                    >
-                        All required controls
-                        confirmed
-                    </small>
-
-                </div>
-
-
-                {/* AT RISK DEVICES */}
-
-                <div style={cardStyle}>
-
-                    <p
-                        style={{
-
-                            color: "#667085",
-
-                            margin: 0,
-
-                            fontWeight: "600"
-                        }}
-                    >
-                        At Risk Devices
-                    </p>
-
-
-                    <h2
-                        style={{
-
-                            color:
-                                atRiskDevices.length > 0
-                                    ? "#d32f2f"
-                                    : "#2e7d32",
-
-                            fontSize: "32px",
-
-                            margin:
-                                "10px 0 0 0"
-                        }}
-                    >
-                        {atRiskDevices.length}
-                    </h2>
-
-
-                    <small
-                        style={{
-                            color: "#667085"
-                        }}
-                    >
-                        Security action required
-                    </small>
-
-                </div>
-
-
-                {/* UNKNOWN */}
-
-                <div style={cardStyle}>
-
-                    <p
-                        style={{
-
-                            color: "#667085",
-
-                            margin: 0,
-
-                            fontWeight: "600"
-                        }}
-                    >
-                        Unknown Status
-                    </p>
-
-
-                    <h2
-                        style={{
-
-                            color: "#b26a00",
-
-                            fontSize: "32px",
-
-                            margin:
-                                "10px 0 0 0"
-                        }}
-                    >
-                        {unknownDevices.length}
-                    </h2>
-
-
-                    <small
-                        style={{
-                            color: "#667085"
-                        }}
-                    >
-                        Security information
-                        unavailable
-                    </small>
-
-                </div>
-
-            </div>
-
-
-            {/* =========================================
-                PROTECTION RATE
-            ========================================= */}
-
-            <div
-                style={{
-
-                    ...cardStyle,
-
-                    marginTop: "20px"
-                }}
-            >
-
-                <div
-                    style={{
-
-                        display: "flex",
-
-                        justifyContent:
-                            "space-between",
-
-                        alignItems:
-                            "center",
-
-                        gap: "15px"
-                    }}
-                >
-
-                    <div>
-
-                        <h2
-                            style={{
-
-                                margin:
-                                    "0 0 6px 0"
-                            }}
-                        >
-                            Protection Rate
-                        </h2>
-
-
-                        <span
-                            style={{
-
-                                color: "#667085",
-
-                                fontSize: "14px"
-                            }}
-                        >
-                            Devices meeting
-                            required security
-                            policies
-                        </span>
-
-                    </div>
-
-
-                    <strong
-                        style={{
-
-                            fontSize: "26px",
-
-                            color:
-                                protectionRate >= 80
-                                    ? "#2e7d32"
-                                    : protectionRate >= 50
-                                        ? "#b26a00"
-                                        : "#c62828"
-                        }}
-                    >
-                        {protectionRate}%
-                    </strong>
-
-                </div>
-
-
-                <div
-                    style={{
-
-                        marginTop: "15px",
-
-                        width: "100%",
-
-                        height: "12px",
-
-                        background:
-                            "#e5e7eb",
-
-                        borderRadius:
-                            "10px",
-
-                        overflow:
-                            "hidden"
-                    }}
-                >
-
-                    <div
-                        style={{
-
-                            width:
-                                `${protectionRate}%`,
-
-                            height: "100%",
-
-                            background:
-                                protectionRate >= 80
-                                    ? "#2e7d32"
-                                    : protectionRate >= 50
-                                        ? "#b26a00"
-                                        : "#d32f2f",
-
-                            borderRadius:
-                                "10px",
-
-                            transition:
-                                "width 0.4s ease"
-                        }}
-                    />
-
-                </div>
-
-            </div>
-
-
-            {/* =========================================
-                SECURITY CONTROL OVERVIEW
-            ========================================= */}
-
-            <div
-                style={{
-
-                    display: "grid",
-
-                    gridTemplateColumns:
-                        "repeat(auto-fit, minmax(220px, 1fr))",
-
-                    gap: "18px",
-
-                    marginTop: "20px"
-                }}
-            >
-
-                {/* ANTIVIRUS */}
-
-                <div style={cardStyle}>
-
-                    <h3
-                        style={{
-                            marginTop: 0
-                        }}
-                    >
-                        🛡️ Antivirus
-                    </h3>
-
-
-                    <p
-                        style={{
-                            color: "#667085",
-                            fontSize: "13px"
-                        }}
-                    >
-                        Endpoint protection
-                    </p>
-
-
-                    <div
-                        style={{
-                            marginTop: "15px",
-                            color: "#2e7d32",
-                            fontWeight: "600"
-                        }}
-                    >
-                        {antivirusEnabled}
-                        {" "}
-                        Enabled
-                    </div>
-
-
-                    <div
-                        style={{
-                            marginTop: "7px",
-                            color: "#c62828",
-                            fontSize: "13px"
-                        }}
-                    >
-                        {antivirusDisabled}
-                        {" "}
-                        Disabled
-                    </div>
-
-
-                    <div
-                        style={{
-                            marginTop: "7px",
-                            color: "#b26a00",
-                            fontSize: "13px"
-                        }}
-                    >
-                        {antivirusUnknown}
-                        {" "}
-                        Unknown
-                    </div>
-
-                </div>
-
-
-                {/* FIREWALL */}
-
-                <div style={cardStyle}>
-
-                    <h3
-                        style={{
-                            marginTop: 0
-                        }}
-                    >
-                        🔥 Firewall
-                    </h3>
-
-
-                    <p
-                        style={{
-                            color: "#667085",
-                            fontSize: "13px"
-                        }}
-                    >
-                        Network protection
-                    </p>
-
-
-                    <div
-                        style={{
-                            marginTop: "15px",
-                            color: "#2e7d32",
-                            fontWeight: "600"
-                        }}
-                    >
-                        {firewallEnabled}
-                        {" "}
-                        Enabled
-                    </div>
-
-
-                    <div
-                        style={{
-                            marginTop: "7px",
-                            color: "#c62828",
-                            fontSize: "13px"
-                        }}
-                    >
-                        {firewallDisabled}
-                        {" "}
-                        Disabled
-                    </div>
-
-
-                    <div
-                        style={{
-                            marginTop: "7px",
-                            color: "#b26a00",
-                            fontSize: "13px"
-                        }}
-                    >
-                        {firewallUnknown}
-                        {" "}
-                        Unknown
-                    </div>
-
-                </div>
-
-
-                {/* BACKUP */}
-
-                <div style={cardStyle}>
-
-                    <h3
-                        style={{
-                            marginTop: 0
-                        }}
-                    >
-                        💾 Backup
-                    </h3>
-
-
-                    <p
-                        style={{
-                            color: "#667085",
-                            fontSize: "13px"
-                        }}
-                    >
-                        Data protection
-                    </p>
-
-
-                    <div
-                        style={{
-                            marginTop: "15px",
-                            color: "#2e7d32",
-                            fontWeight: "600"
-                        }}
-                    >
-                        {backupEnabled}
-                        {" "}
-                        Enabled
-                    </div>
-
-
-                    <div
-                        style={{
-                            marginTop: "7px",
-                            color: "#c62828",
-                            fontSize: "13px"
-                        }}
-                    >
-                        {backupDisabled}
-                        {" "}
-                        Disabled
-                    </div>
-
-
-                    <div
-                        style={{
-                            marginTop: "7px",
-                            color: "#b26a00",
-                            fontSize: "13px"
-                        }}
-                    >
-                        {backupUnknown}
-                        {" "}
-                        Unknown
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            {/* =========================================
-                LIVE DEVICE MONITORING
-            ========================================= */}
-
-            <div
-                style={{
-
-                    ...cardStyle,
-
-                    marginTop: "20px",
-
-                    overflowX: "auto"
-                }}
-            >
-
-                <div
-                    style={{
-
-                        display: "flex",
-
-                        justifyContent:
-                            "space-between",
-
-                        alignItems:
-                            "center",
-
-                        marginBottom:
-                            "15px",
-
-                        gap: "10px"
-                    }}
-                >
-
-                    <div>
-
-                        <h2
-                            style={{
-                                margin: 0
-                            }}
-                        >
-                            Live Device Monitoring
-                        </h2>
-
-
-                        <p
-                            style={{
-
-                                margin:
-                                    "6px 0 0 0",
-
-                                color:
-                                    "#667085",
-
-                                fontSize:
-                                    "14px"
-                            }}
-                        >
-                            Information reported
-                            automatically by the
-                            Sentinel Agent.
-                        </p>
-
-                    </div>
-
-
-                    <div
-                        style={{
-
-                            padding:
-                                "6px 12px",
-
-                            background:
-                                "#f1f5f9",
-
-                            borderRadius:
-                                "20px",
-
-                            fontSize:
-                                "12px",
-
-                            fontWeight:
-                                "600",
-
-                            color:
-                                "#475467"
-                        }}
-                    >
-                        {deviceList.length}
-                        {" "}
-                        devices
-                    </div>
-
-                </div>
-
-
-                {deviceList.length === 0 ? (
-
-                    <div
-                        style={{
-
-                            padding: "40px",
-
-                            textAlign:
-                                "center",
-
-                            color:
-                                "#667085"
-                        }}
-                    >
-
-                        <div
-                            style={{
-
-                                fontSize:
-                                    "42px",
-
-                                marginBottom:
-                                    "10px"
-                            }}
-                        >
-                            🖥️
-                        </div>
-
-                        <strong
-                            style={{
-
-                                display:
-                                    "block",
-
-                                fontSize:
-                                    "18px",
-
-                                color:
-                                    "#344054"
-                            }}
-                        >
-                            No devices found
-                        </strong>
-
-                        <p>
-                            Waiting for a Sentinel
-                            Agent heartbeat.
-                        </p>
-
-                    </div>
-
-                ) : (
-
-                    <table
-                        style={{
-
-                            width: "100%",
-
-                            minWidth:
-                                "1200px",
-
-                            borderCollapse:
-                                "collapse"
-                        }}
-                    >
-
-                        <thead>
-
-                            <tr
-                                style={{
-
-                                    textAlign:
-                                        "left",
-
-                                    background:
-                                        "#f8fafc"
-                                }}
-                            >
-
-                                <th style={{
-                                    padding: "13px"
-                                }}>
-                                    Device
-                                </th>
-
-                                <th style={{
-                                    padding: "13px"
-                                }}>
-                                    OS
-                                </th>
-
-                                <th style={{
-                                    padding: "13px"
-                                }}>
-                                    CPU
-                                </th>
-
-                                <th style={{
-                                    padding: "13px"
-                                }}>
-                                    RAM
-                                </th>
-
-                                <th style={{
-                                    padding: "13px"
-                                }}>
-                                    Antivirus
-                                </th>
-
-                                <th style={{
-                                    padding: "13px"
-                                }}>
-                                    Firewall
-                                </th>
-
-                                <th style={{
-                                    padding: "13px"
-                                }}>
-                                    Backup
-                                </th>
-
-                                <th style={{
-                                    padding: "13px"
-                                }}>
-                                    Connection
-                                </th>
-
-                                <th style={{
-                                    padding: "13px"
-                                }}>
-                                    Last Seen
-                                </th>
-
-                                <th style={{
-                                    padding: "13px"
-                                }}>
-                                    Security
-                                </th>
-
-                            </tr>
-
-                        </thead>
-
-
-                        <tbody>
-
-                            {deviceList.map(
-                                (device, index) => {
-
-                                    const antivirusStatus =
-                                        getControlStatus(
-                                            device,
-                                            "antivirus"
-                                        );
-
-
-                                    const firewallStatus =
-                                        getControlStatus(
-                                            device,
-                                            "firewall"
-                                        );
-
-
-                                    const backupStatus =
-                                        getControlStatus(
-                                            device,
-                                            "backup"
-                                        );
-
-
-                                    const securityStatus =
-                                        getSecurityStatus(
-                                            device
-                                        );
-
-
-                                    const antivirus =
-                                        securityValue(
-                                            antivirusStatus
-                                        );
-
-
-                                    const firewall =
-                                        securityValue(
-                                            firewallStatus
-                                        );
-
-
-                                    const backup =
-                                        securityValue(
-                                            backupStatus
-                                        );
-
-
-                                    const connection =
-                                        statusBadge(
-                                            device
-                                        );
-
-
-                                    const security =
-                                        securityBadge(
-                                            securityStatus
-                                        );
-
-
-                                    return (
-
-                                        <tr
-                                            key={
-                                                device.id ||
-                                                device.device_id ||
-                                                index
-                                            }
-                                            style={{
-                                                borderTop:
-                                                    "1px solid #eee"
-                                            }}
-                                        >
-
-                                            {/* DEVICE */}
-
-                                            <td
-                                                style={{
-                                                    padding:
-                                                        "13px"
-                                                }}
-                                            >
-
-                                                <strong>
-                                                    {
-                                                        device.name ||
-                                                        device.device_name ||
-                                                        device.hostname ||
-                                                        device.device_id ||
-                                                        "Unknown Device"
-                                                    }
-                                                </strong>
-
-
-                                                <div
-                                                    style={{
-
-                                                        marginTop:
-                                                            "4px",
-
-                                                        fontSize:
-                                                            "12px",
-
-                                                        color:
-                                                            "#667085"
-                                                    }}
-                                                >
-                                                    ID:{" "}
-
-                                                    {
-                                                        device.device_id ||
-                                                        "Manual device"
-                                                    }
-                                                </div>
-
-
-                                                {device.username && (
-
-                                                    <div
-                                                        style={{
-
-                                                            marginTop:
-                                                                "3px",
-
-                                                            fontSize:
-                                                                "12px",
-
-                                                            color:
-                                                                "#667085"
-                                                        }}
-                                                    >
-                                                        User:{" "}
-                                                        {
-                                                            device.username
-                                                        }
-                                                    </div>
-
-                                                )}
-
-                                            </td>
-
-
-                                            {/* OS */}
-
-                                            <td
-                                                style={{
-                                                    padding:
-                                                        "13px"
-                                                }}
-                                            >
-                                                {
-                                                    device.operating_system ||
-                                                    device.operatingSystem ||
-                                                    device.os ||
-                                                    "Unknown"
-                                                }
-                                            </td>
-
-
-                                            {/* CPU */}
-
-                                            <td
-                                                style={{
-
-                                                    padding:
-                                                        "13px",
-
-                                                    maxWidth:
-                                                        "220px"
-                                                }}
-                                            >
-                                                <span
-                                                    style={{
-                                                        fontSize:
-                                                            "12px"
-                                                    }}
-                                                >
-                                                    {
-                                                        device.cpu ||
-                                                        device.cpu_usage ||
-                                                        device.cpu_percent !== undefined
-                                                            ? (
-                                                                device.cpu ||
-                                                                device.cpu_usage ||
-                                                                `${device.cpu_percent}%`
-                                                            )
-                                                            : "Unknown"
-                                                    }
-                                                </span>
-                                            </td>
-
-
-                                            {/* RAM */}
-
-                                            <td
-                                                style={{
-                                                    padding:
-                                                        "13px"
-                                                }}
-                                            >
-
-                                                {
-                                                    device.ram_gb !== null &&
-                                                    device.ram_gb !== undefined
-                                                        ? `${device.ram_gb} GB`
-
-                                                        : device.total_memory_gb !== null &&
-                                                            device.total_memory_gb !== undefined
-
-                                                            ? `${device.total_memory_gb} GB`
-
-                                                            : device.ram ||
-                                                                device.memory ||
-                                                                "Unknown"
-                                                }
-
-                                            </td>
-
-
-                                            {/* ANTIVIRUS */}
-
-                                            <td
-                                                style={{
-                                                    padding:
-                                                        "13px"
-                                                }}
-                                            >
-
-                                                <span
-                                                    style={{
-
-                                                        padding:
-                                                            "5px 9px",
-
-                                                        borderRadius:
-                                                            "15px",
-
-                                                        background:
-                                                            antivirus.background,
-
-                                                        color:
-                                                            antivirus.color,
-
-                                                        fontSize:
-                                                            "12px",
-
-                                                        fontWeight:
-                                                            "600",
-
-                                                        whiteSpace:
-                                                            "nowrap"
-                                                    }}
-                                                >
-                                                    {
-                                                        antivirus.text
-                                                    }
-                                                </span>
-
-
-                                                {device.antivirus_product && (
-
-                                                    <div
-                                                        style={{
-
-                                                            marginTop:
-                                                                "5px",
-
-                                                            fontSize:
-                                                                "11px",
-
-                                                            color:
-                                                                "#667085"
-                                                        }}
-                                                    >
-                                                        {
-                                                            device.antivirus_product
-                                                        }
-                                                    </div>
-
-                                                )}
-
-                                            </td>
-
-
-                                            {/* FIREWALL */}
-
-                                            <td
-                                                style={{
-                                                    padding:
-                                                        "13px"
-                                                }}
-                                            >
-
-                                                <span
-                                                    style={{
-
-                                                        padding:
-                                                            "5px 9px",
-
-                                                        borderRadius:
-                                                            "15px",
-
-                                                        background:
-                                                            firewall.background,
-
-                                                        color:
-                                                            firewall.color,
-
-                                                        fontSize:
-                                                            "12px",
-
-                                                        fontWeight:
-                                                            "600",
-
-                                                        whiteSpace:
-                                                            "nowrap"
-                                                    }}
-                                                >
-                                                    {
-                                                        firewall.text
-                                                    }
-                                                </span>
-
-                                            </td>
-
-
-                                            {/* BACKUP */}
-
-                                            <td
-                                                style={{
-                                                    padding:
-                                                        "13px"
-                                                }}
-                                            >
-
-                                                <span
-                                                    style={{
-
-                                                        padding:
-                                                            "5px 9px",
-
-                                                        borderRadius:
-                                                            "15px",
-
-                                                        background:
-                                                            backup.background,
-
-                                                        color:
-                                                            backup.color,
-
-                                                        fontSize:
-                                                            "12px",
-
-                                                        fontWeight:
-                                                            "600",
-
-                                                        whiteSpace:
-                                                            "nowrap"
-                                                    }}
-                                                >
-                                                    {
-                                                        backup.text
-                                                    }
-                                                </span>
-
-                                            </td>
-
-
-                                            {/* CONNECTION */}
-
-                                            <td
-                                                style={{
-                                                    padding:
-                                                        "13px"
-                                                }}
-                                            >
-
-                                                <span
-                                                    style={{
-
-                                                        display:
-                                                            "inline-block",
-
-                                                        padding:
-                                                            "6px 10px",
-
-                                                        borderRadius:
-                                                            "15px",
-
-                                                        background:
-                                                            connection.background,
-
-                                                        color:
-                                                            connection.color,
-
-                                                        fontSize:
-                                                            "12px",
-
-                                                        fontWeight:
-                                                            "700"
-                                                    }}
-                                                >
-                                                    ●{" "}
-                                                    {
-                                                        connection.text
-                                                    }
-                                                </span>
-
-                                            </td>
-
-
-                                            {/* LAST SEEN */}
-
-                                            <td
-                                                style={{
-
-                                                    padding:
-                                                        "13px",
-
-                                                    whiteSpace:
-                                                        "nowrap",
-
-                                                    fontSize:
-                                                        "12px",
-
-                                                    color:
-                                                        "#667085"
-                                                }}
-                                            >
-
-                                                {
-                                                    formatLastSeen(
-                                                        device.last_seen ||
-                                                        device.lastSeen ||
-                                                        device.updated_at
-                                                    )
-                                                }
-
-                                            </td>
-
-
-                                            {/* SECURITY */}
-
-                                            <td
-                                                style={{
-                                                    padding:
-                                                        "13px"
-                                                }}
-                                            >
-
-                                                <span
-                                                    style={{
-
-                                                        padding:
-                                                            "6px 12px",
-
-                                                        borderRadius:
-                                                            "20px",
-
-                                                        fontWeight:
-                                                            "bold",
-
-                                                        fontSize:
-                                                            "12px",
-
-                                                        background:
-                                                            security.background,
-
-                                                        color:
-                                                            security.color,
-
-                                                        whiteSpace:
-                                                            "nowrap"
-                                                    }}
-                                                >
-                                                    {
-                                                        security.text
-                                                    }
-                                                </span>
-
-                                            </td>
-
-                                        </tr>
-
-                                    );
-
-                                }
-                            )}
-
-                        </tbody>
-
-                    </table>
-
-                )}
-
-            </div>
-
-
-            {/* =========================================
-                OFFLINE DEVICES
-            ========================================= */}
-
-            {offlineDevices.length > 0 && (
-
-                <div
-                    style={{
-
-                        ...cardStyle,
-
-                        marginTop: "20px",
-
-                        borderLeft:
-                            "4px solid #d32f2f"
-                    }}
-                >
-
-                    <h2
-                        style={{
-                            marginTop: 0
-                        }}
-                    >
-                        Offline Devices
-                    </h2>
-
-
-                    <p
-                        style={{
-
-                            color:
-                                "#667085",
-
-                            fontSize:
-                                "14px"
-                        }}
-                    >
-                        These devices have not
-                        recently sent a heartbeat
-                        to the Sentinel server.
-                    </p>
-
-
-                    {offlineDevices.map(
-                        (device, index) => (
-
-                            <div
-                                key={
-                                    device.id ||
-                                    device.device_id ||
-                                    index
-                                }
-                                style={{
-
-                                    padding:
-                                        "12px 0",
-
-                                    borderBottom:
-                                        "1px solid #eee",
-
-                                    display:
-                                        "flex",
-
-                                    justifyContent:
-                                        "space-between",
-
-                                    alignItems:
-                                        "center",
-
-                                    gap:
-                                        "15px"
-                                }}
-                            >
-
-                                <div>
-
-                                    <strong>
-                                        {
-                                            device.name ||
-                                            device.device_name ||
-                                            device.hostname ||
-                                            device.device_id ||
-                                            "Unknown Device"
-                                        }
-                                    </strong>
-
-
-                                    <div
-                                        style={{
-
-                                            fontSize:
-                                                "12px",
-
-                                            color:
-                                                "#667085",
-
-                                            marginTop:
-                                                "4px"
-                                        }}
-                                    >
-                                        Last seen:{" "}
-
-                                        {
-                                            formatLastSeen(
-                                                device.last_seen ||
-                                                device.lastSeen ||
-                                                device.updated_at
-                                            )
-                                        }
-                                    </div>
-
-                                </div>
-
-
-                                <span
-                                    style={{
-
-                                        padding:
-                                            "6px 10px",
-
-                                        borderRadius:
-                                            "15px",
-
-                                        background:
-                                            "#fde8e8",
-
-                                        color:
-                                            "#c62828",
-
-                                        fontWeight:
-                                            "600",
-
-                                        fontSize:
-                                            "12px"
-                                    }}
-                                >
-                                    OFFLINE
-                                </span>
-
-                            </div>
-
-                        )
-                    )}
-
-                </div>
-
-            )}
-
-
-            {/* =========================================
-                SECURITY POLICY
-            ========================================= */}
-
-            <div
-                style={{
-
-                    ...cardStyle,
-
-                    marginTop: "20px"
-                }}
-            >
-
-                <h2
-                    style={{
-                        marginTop: 0
-                    }}
-                >
-                    Current Security Policy
-                </h2>
-
-
-                <p
-                    style={{
-
-                        color:
-                            "#667085",
-
-                        fontSize:
-                            "14px"
-                    }}
-                >
-                    These controls determine
-                    which security requirements
-                    Sentinel checks on company
-                    devices.
-                </p>
-
-
-                <div
-                    style={{
-
-                        display: "grid",
-
-                        gridTemplateColumns:
-                            "repeat(auto-fit, minmax(180px, 1fr))",
-
-                        gap: "12px"
-                    }}
-                >
-
-                    {/* ANTIVIRUS */}
-
-                    <div
-                        style={{
-
-                            padding: "15px",
-
-                            background:
-                                "#f8fafc",
-
-                            borderRadius:
-                                "8px",
-
-                            border:
-                                "1px solid #e5e7eb"
-                        }}
-                    >
-
-                        <strong>
-                            Antivirus
-                        </strong>
-
-
-                        <div
-                            style={{
-                                marginTop:
-                                    "7px",
-
-                                color:
-                                    securityPolicy.antivirus_required === false
-                                        ? "#667085"
-                                        : "#2e7d32",
-
-                                fontWeight:
-                                    "600"
-                            }}
-                        >
-                            {
-                                securityPolicy.antivirus_required === false
-                                    ? "Not Required"
-                                    : "Required"
-                            }
-                        </div>
-
-                    </div>
-
-
-                    {/* FIREWALL */}
-
-                    <div
-                        style={{
-
-                            padding: "15px",
-
-                            background:
-                                "#f8fafc",
-
-                            borderRadius:
-                                "8px",
-
-                            border:
-                                "1px solid #e5e7eb"
-                        }}
-                    >
-
-                        <strong>
-                            Firewall
-                        </strong>
-
-
-                        <div
-                            style={{
-
-                                marginTop:
-                                    "7px",
-
-                                color:
-                                    securityPolicy.firewall_required === false
-                                        ? "#667085"
-                                        : "#2e7d32",
-
-                                fontWeight:
-                                    "600"
-                            }}
-                        >
-                            {
-                                securityPolicy.firewall_required === false
-                                    ? "Not Required"
-                                    : "Required"
-                            }
-                        </div>
-
-                    </div>
-
-
-                    {/* BACKUP */}
-
-                    <div
-                        style={{
-
-                            padding: "15px",
-
-                            background:
-                                "#f8fafc",
-
-                            borderRadius:
-                                "8px",
-
-                            border:
-                                "1px solid #e5e7eb"
-                        }}
-                    >
-
-                        <strong>
-                            Backup
-                        </strong>
-
-
-                        <div
-                            style={{
-
-                                marginTop:
-                                    "7px",
-
-                                color:
-                                    securityPolicy.backup_required === false
-                                        ? "#667085"
-                                        : "#2e7d32",
-
-                                fontWeight:
-                                    "600"
-                            }}
-                        >
-                            {
-                                securityPolicy.backup_required === false
-                                    ? "Not Required"
-                                    : "Required"
-                            }
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-            {/* =========================================
-                HOW SENTINEL WORKS
-            ========================================= */}
-
-            <div
-                style={{
-
-                    ...cardStyle,
-
-                    marginTop: "20px",
-
-                    marginBottom: "25px"
-                }}
-            >
-
-                <h2
-                    style={{
-                        marginTop: 0
-                    }}
-                >
-                    Sentinel Monitoring
-                </h2>
-
-
-                <p
-                    style={{
-
-                        color:
-                            "#667085",
-
-                        fontSize:
-                            "14px"
-                    }}
-                >
-                    The Sentinel Agent automatically
-                    reports device and security
-                    information to the server.
-                </p>
-
-
-                <div
-                    style={{
-
-                        display:
-                            "grid",
-
-                        gridTemplateColumns:
-                            "repeat(auto-fit, minmax(200px, 1fr))",
-
-                        gap:
-                            "15px",
-
-                        marginTop:
-                            "15px"
-                    }}
-                >
-
-
-                    {/* AGENT */}
-
-                    <div
-                        style={{
-
-                            padding:
-                                "18px",
-
-                            background:
-                                "#f8fafc",
-
-                            borderRadius:
-                                "10px"
-                        }}
-                    >
-
-                        <strong>
-                            01. Agent
-                        </strong>
-
-                        <p
-                            style={{
-
-                                color:
-                                    "#667085",
-
-                                fontSize:
-                                    "13px"
-                            }}
-                        >
-                            Collects device,
-                            firewall, backup
-                            and antivirus
-                            information.
-                        </p>
-
-                    </div>
-
-
-                    {/* SERVER */}
-
-                    <div
-                        style={{
-
-                            padding:
-                                "18px",
-
-                            background:
-                                "#f8fafc",
-
-                            borderRadius:
-                                "10px"
-                        }}
-                    >
-
-                        <strong>
-                            02. Server
-                        </strong>
-
-                        <p
-                            style={{
-
-                                color:
-                                    "#667085",
-
-                                fontSize:
-                                    "13px"
-                            }}
-                        >
-                            Receives the device
-                            heartbeat every
-                            30 seconds.
-                        </p>
-
-                    </div>
-
-
-                    {/* DATABASE */}
-
-                    <div
-                        style={{
-
-                            padding:
-                                "18px",
-
-                            background:
-                                "#f8fafc",
-
-                            borderRadius:
-                                "10px"
-                        }}
-                    >
-
-                        <strong>
-                            03. Database
-                        </strong>
-
-                        <p
-                            style={{
-
-                                color:
-                                    "#667085",
-
-                                fontSize:
-                                    "13px"
-                            }}
-                        >
-                            PostgreSQL stores
-                            device and security
-                            information.
-                        </p>
-
-                    </div>
-
-
-                    {/* DASHBOARD */}
-
-                    <div
-                        style={{
-
-                            padding:
-                                "18px",
-
-                            background:
-                                "#f8fafc",
-
-                            borderRadius:
-                                "10px"
-                        }}
-                    >
-
-                        <strong>
-                            04. Dashboard
-                        </strong>
-
-                        <p
-                            style={{
-
-                                color:
-                                    "#667085",
-
-                                fontSize:
-                                    "13px"
-                            }}
-                        >
-                            Administrator
-                            monitors the
-                            company environment.
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    );
+function getToken() {
+  return localStorage.getItem("token");
 }
 
+async function apiFetch(path) {
+  const token = getToken();
 
-export default Dashboard;
+  const response = await fetch(`${API}${path}`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : {}),
+    },
+  });
+
+  let data = {};
+
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data.message ||
+        data.error ||
+        `Request failed: ${response.status}`
+    );
+  }
+
+  return data;
+}
+
+function normalize(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase();
+}
+
+function formatDate(value) {
+  if (!value) return "Unknown";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown";
+  }
+
+  return date.toLocaleString();
+}
+
+function relativeTime(value) {
+  if (!value) return "Unknown";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown";
+  }
+
+  const seconds = Math.floor(
+    (Date.now() - date.getTime()) / 1000
+  );
+
+  if (seconds < 10) return "Just now";
+  if (seconds < 60) return `${seconds}s ago`;
+
+  const minutes = Math.floor(seconds / 60);
+
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
+
+  const days = Math.floor(hours / 24);
+
+  return `${days}d ago`;
+}
+
+function deviceName(device) {
+  return (
+    device.name ||
+    device.hostname ||
+    device.device_id ||
+    "Unknown Device"
+  );
+}
+
+function securityStatus(device) {
+  return normalize(
+    device.security_status ||
+      device.securityStatus
+  );
+}
+
+function connectionStatus(device) {
+  return device.online === true
+    ? "ONLINE"
+    : "OFFLINE";
+}
+
+function controlStatus(device, type) {
+  const value =
+    device[`${type}_status`];
+
+  if (value) {
+    return normalize(value);
+  }
+
+  const booleanValue =
+    device[type];
+
+  if (booleanValue === true) {
+    return "ENABLED";
+  }
+
+  if (booleanValue === false) {
+    return "DISABLED";
+  }
+
+  return "UNKNOWN";
+}
+
+export default function Dashboard() {
+  const [devices, setDevices] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [refreshing, setRefreshing] =
+    useState(false);
+
+  const [error, setError] = useState("");
+
+  async function loadDashboard(
+    initial = false
+  ) {
+    try {
+      if (initial) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
+
+      setError("");
+
+      const [devicesData, alertsData] =
+        await Promise.all([
+          apiFetch("/devices"),
+          apiFetch("/security-alerts"),
+        ]);
+
+      const deviceRows =
+        Array.isArray(devicesData)
+          ? devicesData
+          : Array.isArray(
+              devicesData.devices
+            )
+          ? devicesData.devices
+          : [];
+
+      const alertRows =
+        Array.isArray(alertsData)
+          ? alertsData
+          : Array.isArray(
+              alertsData.alerts
+            )
+          ? alertsData.alerts
+          : [];
+
+      setDevices(deviceRows);
+      setAlerts(alertRows);
+    } catch (err) {
+      console.error(
+        "Dashboard loading error:",
+        err
+      );
+
+      setError(
+        err.message ||
+          "Failed to load dashboard data."
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }
+
+  useEffect(() => {
+    loadDashboard(true);
+
+    const interval = setInterval(() => {
+      loadDashboard(false);
+    }, 15000);
+
+    return () =>
+      clearInterval(interval);
+  }, []);
+
+  const statistics = useMemo(() => {
+    let online = 0;
+    let offline = 0;
+
+    let secure = 0;
+    let atRisk = 0;
+    let unknown = 0;
+
+    for (const device of devices) {
+      if (device.online === true) {
+        online++;
+      } else {
+        offline++;
+      }
+
+      const status =
+        securityStatus(device);
+
+      if (status === "SECURE") {
+        secure++;
+      } else if (
+        status === "AT RISK"
+      ) {
+        atRisk++;
+      } else {
+        unknown++;
+      }
+    }
+
+    const activeAlerts =
+      alerts.filter((alert) => {
+        const status = normalize(
+          alert.status
+        );
+
+        return (
+          status === "OPEN" ||
+          status === "ACKNOWLEDGED"
+        );
+      });
+
+    const openAlerts =
+      alerts.filter(
+        (alert) =>
+          normalize(alert.status) ===
+          "OPEN"
+      );
+
+    const criticalAlerts =
+      activeAlerts.filter((alert) => {
+        const severity =
+          normalize(alert.severity);
+
+        return (
+          severity === "CRITICAL" ||
+          severity === "HIGH"
+        );
+      });
+
+    return {
+      total: devices.length,
+      online,
+      offline,
+      secure,
+      atRisk,
+      unknown,
+      activeAlerts:
+        activeAlerts.length,
+      openAlerts: openAlerts.length,
+      criticalAlerts:
+        criticalAlerts.length,
+    };
+  }, [devices, alerts]);
+
+  const securityBreakdown = useMemo(() => {
+    let antivirusEnabled = 0;
+    let antivirusDisabled = 0;
+    let antivirusUnknown = 0;
+
+    let firewallEnabled = 0;
+    let firewallDisabled = 0;
+    let firewallUnknown = 0;
+
+    let backupEnabled = 0;
+    let backupDisabled = 0;
+    let backupUnknown = 0;
+
+    for (const device of devices) {
+      const antivirus =
+        controlStatus(
+          device,
+          "antivirus"
+        );
+
+      const firewall =
+        controlStatus(
+          device,
+          "firewall"
+        );
+
+      const backup =
+        controlStatus(
+          device,
+          "backup"
+        );
+
+      if (antivirus === "ENABLED") {
+        antivirusEnabled++;
+      } else if (
+        antivirus === "DISABLED"
+      ) {
+        antivirusDisabled++;
+      } else {
+        antivirusUnknown++;
+      }
+
+      if (firewall === "ENABLED") {
+        firewallEnabled++;
+      } else if (
+        firewall === "DISABLED"
+      ) {
+        firewallDisabled++;
+      } else {
+        firewallUnknown++;
+      }
+
+      if (backup === "ENABLED") {
+        backupEnabled++;
+      } else if (
+        backup === "DISABLED"
+      ) {
+        backupDisabled++;
+      } else {
+        backupUnknown++;
+      }
+    }
+
+    return {
+      antivirusEnabled,
+      antivirusDisabled,
+      antivirusUnknown,
+      firewallEnabled,
+      firewallDisabled,
+      firewallUnknown,
+      backupEnabled,
+      backupDisabled,
+      backupUnknown,
+    };
+  }, [devices]);
+
+  const recentAlerts = useMemo(() => {
+    return [...alerts]
+      .sort((a, b) => {
+        const aTime =
+          new Date(
+            a.last_detected ||
+              a.updated_at ||
+              a.created_at ||
+              0
+          ).getTime();
+
+        const bTime =
+          new Date(
+            b.last_detected ||
+              b.updated_at ||
+              b.created_at ||
+              0
+          ).getTime();
+
+        return bTime - aTime;
+      })
+      .slice(0, 6);
+  }, [alerts]);
+
+  const riskDevices = useMemo(() => {
+    return devices
+      .filter(
+        (device) =>
+          securityStatus(device) ===
+          "AT RISK"
+      )
+      .slice(0, 6);
+  }, [devices]);
+
+  if (loading) {
+    return (
+      <div className="sd-page">
+        <style>{styles}</style>
+
+        <div className="sd-loading">
+          <div className="sd-spinner" />
+
+          <div>
+            <strong>
+              Loading Sentinel Dashboard
+            </strong>
+
+            <span>
+              Collecting live device and
+              security information...
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="sd-page">
+      <style>{styles}</style>
+
+      <div className="sd-header">
+        <div>
+          <div className="sd-eyebrow">
+            SENTINEL IT SECURITY PLATFORM
+          </div>
+
+          <h1>Security Overview</h1>
+
+          <p>
+            Real-time visibility into company
+            devices, security controls and
+            active incidents.
+          </p>
+        </div>
+
+        <div className="sd-header-actions">
+          <div className="sd-live-indicator">
+            <span />
+            Live monitoring
+          </div>
+
+          <button
+            className="sd-refresh"
+            onClick={() =>
+              loadDashboard(false)
+            }
+            disabled={refreshing}
+          >
+            <span
+              className={
+                refreshing
+                  ? "sd-refresh-icon sd-spin"
+                  : "sd-refresh-icon"
+              }
+            >
+              ↻
+            </span>
+
+            {refreshing
+              ? "Refreshing..."
+              : "Refresh"}
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="sd-error">
+          <div>
+            <strong>
+              Dashboard connection problem
+            </strong>
+
+            <span>{error}</span>
+          </div>
+
+          <button
+            onClick={() => setError("")}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      <div className="sd-stat-grid">
+        <StatCard
+          label="Total Devices"
+          value={statistics.total}
+          icon="▣"
+          className="blue"
+        />
+
+        <StatCard
+          label="Online"
+          value={statistics.online}
+          icon="●"
+          className="green"
+        />
+
+        <StatCard
+          label="Offline"
+          value={statistics.offline}
+          icon="○"
+          className="gray"
+        />
+
+        <StatCard
+          label="Secure"
+          value={statistics.secure}
+          icon="✓"
+          className="green"
+        />
+
+        <StatCard
+          label="At Risk"
+          value={statistics.atRisk}
+          icon="!"
+          className="red"
+        />
+
+        <StatCard
+          label="Critical Alerts"
+          value={statistics.criticalAlerts}
+          icon="!"
+          className="orange"
+        />
+      </div>
+
+      <div className="sd-main-grid">
+        <section className="sd-panel">
+          <div className="sd-panel-header">
+            <div>
+              <h2>
+                Security Controls
+              </h2>
+
+              <p>
+                Current protection state across
+                monitored devices.
+              </p>
+            </div>
+
+            <div className="sd-device-count">
+              {devices.length} devices
+            </div>
+          </div>
+
+          <div className="sd-control-list">
+            <SecurityControl
+              name="Antivirus"
+              enabled={
+                securityBreakdown
+                  .antivirusEnabled
+              }
+              disabled={
+                securityBreakdown
+                  .antivirusDisabled
+              }
+              unknown={
+                securityBreakdown
+                  .antivirusUnknown
+              }
+            />
+
+            <SecurityControl
+              name="Firewall"
+              enabled={
+                securityBreakdown
+                  .firewallEnabled
+              }
+              disabled={
+                securityBreakdown
+                  .firewallDisabled
+              }
+              unknown={
+                securityBreakdown
+                  .firewallUnknown
+              }
+            />
+
+            <SecurityControl
+              name="Backup"
+              enabled={
+                securityBreakdown
+                  .backupEnabled
+              }
+              disabled={
+                securityBreakdown
+                  .backupDisabled
+              }
+              unknown={
+                securityBreakdown
+                  .backupUnknown
+              }
+            />
+          </div>
+        </section>
+
+        <section className="sd-panel">
+          <div className="sd-panel-header">
+            <div>
+              <h2>
+                Alert Summary
+              </h2>
+
+              <p>
+                Current security incident
+                status.
+              </p>
+            </div>
+          </div>
+
+          <div className="sd-alert-summary">
+            <SummaryRow
+              label="Open alerts"
+              value={statistics.openAlerts}
+              className="danger"
+            />
+
+            <SummaryRow
+              label="Active alerts"
+              value={statistics.activeAlerts}
+              className="warning"
+            />
+
+            <SummaryRow
+              label="Critical alerts"
+              value={
+                statistics.criticalAlerts
+              }
+              className="critical"
+            />
+
+            <SummaryRow
+              label="Resolved alerts"
+              value={
+                alerts.filter(
+                  (alert) =>
+                    normalize(
+                      alert.status
+                    ) === "RESOLVED"
+                ).length
+              }
+              className="success"
+            />
+          </div>
+        </section>
+      </div>
+
+      <div className="sd-content-grid">
+        <section className="sd-panel sd-wide">
+          <div className="sd-panel-header">
+            <div>
+              <h2>
+                Recent Security Events
+              </h2>
+
+              <p>
+                Latest events detected by
+                Sentinel.
+              </p>
+            </div>
+
+            <span className="sd-auto">
+              Auto-refresh 15s
+            </span>
+          </div>
+
+          {recentAlerts.length === 0 ? (
+            <EmptyState
+              title="No security events"
+              text="Sentinel has not detected any security alerts."
+            />
+          ) : (
+            <div className="sd-event-list">
+              {recentAlerts.map(
+                (alert) => {
+                  const severity =
+                    normalize(
+                      alert.severity
+                    );
+
+                  const status =
+                    normalize(
+                      alert.status
+                    );
+
+                  return (
+                    <div
+                      className="sd-event"
+                      key={alert.id}
+                    >
+                      <div
+                        className={`sd-event-icon ${severity.toLowerCase()}`}
+                      >
+                        !
+                      </div>
+
+                      <div className="sd-event-content">
+                        <div className="sd-event-top">
+                          <strong>
+                            {String(
+                              alert.alert_type ||
+                                "Security Alert"
+                            )
+                              .replaceAll(
+                                "_",
+                                " "
+                              )
+                              .replace(
+                                /\b\w/g,
+                                (letter) =>
+                                  letter.toUpperCase()
+                              )}
+                          </strong>
+
+                          <span
+                            className={`sd-badge ${severity === "CRITICAL" || severity === "HIGH"
+                                ? "critical"
+                                : "warning"
+                            }`}
+                          >
+                            {severity ||
+                              "WARNING"}
+                          </span>
+                        </div>
+
+                        <p>
+                          {alert.message ||
+                            alert.details ||
+                            "Security condition requires attention."}
+                        </p>
+
+                        <div className="sd-event-meta">
+                          <span>
+                            {alert.device_name ||
+                              alert.device_hostname ||
+                              alert.hostname ||
+                              alert.device_id ||
+                              "Unknown device"}
+                          </span>
+
+                          <span>
+                            {relativeTime(
+                              alert.last_detected ||
+                                alert.updated_at ||
+                                alert.created_at
+                            )}
+                          </span>
+
+                          <span
+                            className={`sd-status ${status.toLowerCase()}`}
+                          >
+                            {status ||
+                              "UNKNOWN"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+              )}
+            </div>
+          )}
+        </section>
+
+        <section className="sd-panel">
+          <div className="sd-panel-header">
+            <div>
+              <h2>
+                Devices At Risk
+              </h2>
+
+              <p>
+                Devices requiring attention.
+              </p>
+            </div>
+          </div>
+
+          {riskDevices.length === 0 ? (
+            <EmptyState
+              title="No devices at risk"
+              text="All currently evaluated devices are not reporting an at-risk state."
+            />
+          ) : (
+            <div className="sd-risk-list">
+              {riskDevices.map(
+                (device) => (
+                  <div
+                    className="sd-risk-device"
+                    key={
+                      device.id ||
+                      device.device_id ||
+                      device.name
+                    }
+                  >
+                    <div className="sd-risk-icon">
+                      !
+                    </div>
+
+                    <div className="sd-risk-info">
+                      <strong>
+                        {deviceName(
+                          device
+                        )}
+                      </strong>
+
+                      <span>
+                        {device.operating_system ||
+                          device.os ||
+                          "Operating system unknown"}
+                      </span>
+                    </div>
+
+                    <span className="sd-badge critical">
+                      AT RISK
+                    </span>
+                  </div>
+                )
+              )}
+            </div>
+          )}
+        </section>
+      </div>
+
+      <section className="sd-panel sd-devices-panel">
+        <div className="sd-panel-header">
+          <div>
+            <h2>
+              Device Monitoring
+            </h2>
+
+            <p>
+              Live status of monitored company
+              computers.
+            </p>
+          </div>
+
+          <div className="sd-monitor-count">
+            <span />
+            Monitoring {devices.length}
+          </div>
+        </div>
+
+        {devices.length === 0 ? (
+          <EmptyState
+            title="No devices registered"
+            text="Install and start the Sentinel agent on a company computer to register it."
+          />
+        ) : (
+          <div className="sd-device-grid">
+            {devices.map((device) => {
+              const security =
+                securityStatus(
+                  device
+                );
+
+              const online =
+                connectionStatus(
+                  device
+                );
+
+              return (
+                <div
+                  className="sd-device-card"
+                  key={
+                    device.id ||
+                    device.device_id ||
+                    device.name
+                  }
+                >
+                  <div className="sd-device-card-top">
+                    <div className="sd-computer-icon">
+                      ▣
+                    </div>
+
+                    <div>
+                      <strong>
+                        {deviceName(
+                          device
+                        )}
+                      </strong>
+
+                      <span>
+                        {device.employee ||
+                          device.username ||
+                          "Unassigned"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="sd-device-status-row">
+                    <span
+                      className={
+                        online === "ONLINE"
+                          ? "sd-online"
+                          : "sd-offline"
+                      }
+                    >
+                      <i />
+                      {online}
+                    </span>
+
+                    <span
+                      className={
+                        security ===
+                        "SECURE"
+                          ? "sd-secure"
+                          : security ===
+                            "AT RISK"
+                          ? "sd-at-risk"
+                          : "sd-unknown"
+                      }
+                    >
+                      {security ||
+                        "UNKNOWN"}
+                    </span>
+                  </div>
+
+                  <div className="sd-mini-controls">
+                    <MiniControl
+                      label="AV"
+                      status={controlStatus(
+                        device,
+                        "antivirus"
+                      )}
+                    />
+
+                    <MiniControl
+                      label="FW"
+                      status={controlStatus(
+                        device,
+                        "firewall"
+                      )}
+                    />
+
+                    <MiniControl
+                      label="Backup"
+                      status={controlStatus(
+                        device,
+                        "backup"
+                      )}
+                    />
+                  </div>
+
+                  <div className="sd-device-footer">
+                    <span>
+                      {device.operating_system ||
+                        device.os ||
+                        "OS unknown"}
+                    </span>
+
+                    <span>
+                      {device.last_seen
+                        ? `Seen ${relativeTime(
+                            device.last_seen
+                          )}`
+                        : "No heartbeat"}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <div className="sd-footer">
+        <span>
+          Sentinel monitoring active
+        </span>
+
+        <span>
+          Last dashboard update:{" "}
+          {new Date().toLocaleTimeString()}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  icon,
+  className,
+}) {
+  return (
+    <div className="sd-stat-card">
+      <div
+        className={`sd-stat-icon ${className}`}
+      >
+        {icon}
+      </div>
+
+      <div>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </div>
+    </div>
+  );
+}
+
+function SecurityControl({
+  name,
+  enabled,
+  disabled,
+  unknown,
+}) {
+  const total =
+    enabled + disabled + unknown;
+
+  const enabledPercent =
+    total > 0
+      ? (enabled / total) * 100
+      : 0;
+
+  return (
+    <div className="sd-control">
+      <div className="sd-control-header">
+        <strong>{name}</strong>
+
+        <span>
+          {enabled} enabled
+        </span>
+      </div>
+
+      <div className="sd-progress">
+        <div
+          className="sd-progress-fill"
+          style={{
+            width: `${enabledPercent}%`,
+          }}
+        />
+      </div>
+
+      <div className="sd-control-legend">
+        <span className="enabled">
+          <i />
+          Enabled {enabled}
+        </span>
+
+        <span className="disabled">
+          <i />
+          Disabled {disabled}
+        </span>
+
+        <span className="unknown">
+          <i />
+          Unknown {unknown}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function SummaryRow({
+  label,
+  value,
+  className,
+}) {
+  return (
+    <div className="sd-summary-row">
+      <div>
+        <span
+          className={`sd-summary-dot ${className}`}
+        />
+        <strong>{label}</strong>
+      </div>
+
+      <span className="sd-summary-value">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function MiniControl({
+  label,
+  status,
+}) {
+  const normalized =
+    normalize(status);
+
+  let className = "unknown";
+
+  if (normalized === "ENABLED") {
+    className = "enabled";
+  } else if (
+    normalized === "DISABLED"
+  ) {
+    className = "disabled";
+  }
+
+  return (
+    <div className="sd-mini-control">
+      <span>{label}</span>
+
+      <strong
+        className={className}
+      >
+        {normalized === "ENABLED"
+          ? "ON"
+          : normalized === "DISABLED"
+          ? "OFF"
+          : "?"}
+      </strong>
+    </div>
+  );
+}
+
+function EmptyState({
+  title,
+  text,
+}) {
+  return (
+    <div className="sd-empty">
+      <div className="sd-empty-icon">
+        ✓
+      </div>
+
+      <h3>{title}</h3>
+
+      <p>{text}</p>
+    </div>
+  );
+}
+
+const styles = `
+.sd-page {
+  width: 100%;
+  min-height: 100%;
+  padding: 28px;
+  background: #f6f8fb;
+  color: #172033;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+.sd-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.sd-eyebrow {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  margin-bottom: 7px;
+}
+
+.sd-header h1 {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.15;
+  letter-spacing: -.035em;
+}
+
+.sd-header p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.sd-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sd-live-indicator,
+.sd-monitor-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4b5a70;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.sd-live-indicator span,
+.sd-monitor-count span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 0 4px #dcfce7;
+}
+
+.sd-refresh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #dbe2ea;
+  background: #fff;
+  color: #334155;
+  padding: 9px 13px;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.sd-refresh:hover {
+  background: #f8fafc;
+}
+
+.sd-refresh:disabled {
+  opacity: .6;
+  cursor: default;
+}
+
+.sd-refresh-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.sd-spin {
+  animation: sd-spin 0.8s linear infinite;
+}
+
+@keyframes sd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sd-error {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 13px 16px;
+  margin-bottom: 18px;
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  border-radius: 11px;
+  color: #991b1b;
+}
+
+.sd-error div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sd-error strong {
+  font-size: 12px;
+}
+
+.sd-error span {
+  font-size: 11px;
+}
+
+.sd-error button {
+  border: 0;
+  background: transparent;
+  color: #991b1b;
+  font-size: 19px;
+  cursor: pointer;
+}
+
+.sd-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 13px;
+  margin-bottom: 18px;
+}
+
+.sd-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 96px;
+  padding: 15px;
+  border: 1px solid #e5eaf0;
+  background: #fff;
+  border-radius: 13px;
+  box-shadow: 0 2px 5px rgba(15,23,42,.025);
+}
+
+.sd-stat-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.sd-stat-icon.blue {
+  background: #eef4ff;
+  color: #315ea8;
+}
+
+.sd-stat-icon.green {
+  background: #ecfdf3;
+  color: #16834b;
+}
+
+.sd-stat-icon.gray {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.sd-stat-icon.red {
+  background: #fff0f0;
+  color: #c62828;
+}
+
+.sd-stat-icon.orange {
+  background: #fff3e8;
+  color: #c76516;
+}
+
+.sd-stat-card > div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sd-stat-card span {
+  color: #718096;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sd-stat-card strong {
+  font-size: 25px;
+  line-height: 1;
+}
+
+.sd-main-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.sd-content-grid {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.sd-panel {
+  background: #fff;
+  border: 1px solid #e5eaf0;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(15,23,42,.025);
+}
+
+.sd-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 17px 19px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.sd-panel-header h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.sd-panel-header p {
+  margin: 4px 0 0;
+  color: #8490a2;
+  font-size: 10px;
+}
+
+.sd-device-count,
+.sd-auto {
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.sd-control-list {
+  padding: 5px 19px 15px;
+}
+
+.sd-control {
+  padding: 14px 0;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.sd-control:last-child {
+  border-bottom: 0;
+}
+
+.sd-control-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.sd-control-header strong {
+  font-size: 12px;
+}
+
+.sd-control-header span {
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.sd-progress {
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #edf1f5;
+}
+
+.sd-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #22a05a;
+  transition: width .4s ease;
+}
+
+.sd-control-legend {
+  display: flex;
+  gap: 15px;
+  margin-top: 8px;
+}
+
+.sd-control-legend span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #8995a7;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.sd-control-legend i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.sd-control-legend .enabled i {
+  background: #16a34a;
+}
+
+.sd-control-legend .disabled i {
+  background: #dc2626;
+}
+
+.sd-control-legend .unknown i {
+  background: #94a3b8;
+}
+
+.sd-alert-summary {
+  padding: 8px 19px 14px;
+}
+
+.sd-summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 0;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.sd-summary-row:last-child {
+  border-bottom: 0;
+}
+
+.sd-summary-row > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.sd-summary-row strong {
+  color: #475569;
+  font-size: 11px;
+}
+
+.sd-summary-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.sd-summary-dot.danger {
+  background: #dc2626;
+}
+
+.sd-summary-dot.warning {
+  background: #f59e0b;
+}
+
+.sd-summary-dot.critical {
+  background: #b91c1c;
+}
+
+.sd-summary-dot.success {
+  background: #16a34a;
+}
+
+.sd-summary-value {
+  color: #172033;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.sd-event-list {
+  padding: 4px 19px;
+}
+
+.sd-event {
+  display: flex;
+  gap: 11px;
+  padding: 13px 0;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.sd-event:last-child {
+  border-bottom: 0;
+}
+
+.sd-event-icon {
+  width: 31px;
+  height: 31px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: #fff8e8;
+  color: #b7791f;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.sd-event-icon.critical {
+  background: #fff0f0;
+  color: #c62828;
+}
+
+.sd-event-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.sd-event-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sd-event-top strong {
+  color: #344054;
+  font-size: 11px;
+}
+
+.sd-event p {
+  margin: 4px 0;
+  color: #667085;
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.sd-event-meta {
+  display: flex;
+  gap: 11px;
+  flex-wrap: wrap;
+  color: #98a2b3;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.sd-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 7px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.sd-badge.critical {
+  color: #b42318;
+  background: #fff0f0;
+}
+
+.sd-badge.warning {
+  color: #946200;
+  background: #fff8df;
+}
+
+.sd-status {
+  padding: 2px 5px;
+  border-radius: 5px;
+  background: #f1f5f9;
+}
+
+.sd-status.open {
+  color: #b42318;
+  background: #fff0f0;
+}
+
+.sd-status.acknowledged {
+  color: #6941a5;
+  background: #f3edff;
+}
+
+.sd-status.resolved {
+  color: #147a46;
+  background: #ecfdf3;
+}
+
+.sd-risk-list {
+  padding: 4px 17px;
+}
+
+.sd-risk-device {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 2px;
+  border-bottom: 1px solid #eef1f5;
+}
+
+.sd-risk-device:last-child {
+  border-bottom: 0;
+}
+
+.sd-risk-icon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: #fff0f0;
+  color: #c62828;
+  font-weight: 900;
+}
+
+.sd-risk-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sd-risk-info strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #344054;
+  font-size: 11px;
+}
+
+.sd-risk-info span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #98a2b3;
+  font-size: 9px;
+}
+
+.sd-devices-panel {
+  margin-bottom: 14px;
+}
+
+.sd-device-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  padding: 17px;
+}
+
+.sd-device-card {
+  padding: 14px;
+  border: 1px solid #e7ebf0;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.sd-device-card-top {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-bottom: 12px;
+}
+
+.sd-computer-icon {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: #eef3f8;
+  color: #46566e;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.sd-device-card-top > div:last-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sd-device-card-top strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #344054;
+  font-size: 11px;
+}
+
+.sd-device-card-top span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #98a2b3;
+  font-size: 9px;
+}
+
+.sd-device-status-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 0;
+  border-top: 1px solid #edf0f4;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.sd-online,
+.sd-offline,
+.sd-secure,
+.sd-at-risk,
+.sd-unknown {
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.sd-online {
+  color: #16834b;
+}
+
+.sd-offline {
+  color: #64748b;
+}
+
+.sd-online i,
+.sd-offline i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.sd-secure {
+  color: #16834b;
+}
+
+.sd-at-risk {
+  color: #c62828;
+}
+
+.sd-unknown {
+  color: #64748b;
+}
+
+.sd-mini-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  padding: 11px 0;
+}
+
+.sd-mini-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 3px;
+  border-radius: 7px;
+  background: #f1f5f9;
+}
+
+.sd-mini-control span {
+  color: #8a95a6;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.sd-mini-control strong {
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.sd-mini-control strong.enabled {
+  color: #16834b;
+}
+
+.sd-mini-control strong.disabled {
+  color: #c62828;
+}
+
+.sd-mini-control strong.unknown {
+  color: #64748b;
+}
+
+.sd-device-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #98a2b3;
+  font-size: 8px;
+}
+
+.sd-device-footer span {
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sd-empty {
+  min-height: 210px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  text-align: center;
+  padding: 35px;
+}
+
+.sd-empty-icon {
+  width: 43px;
+  height: 43px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  border-radius: 50%;
+  background: #ecfdf3;
+  color: #16834b;
+  font-weight: 900;
+}
+
+.sd-empty h3 {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.sd-empty p {
+  max-width: 430px;
+  margin: 0;
+  color: #8995a7;
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.sd-loading {
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.sd-loading > div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sd-loading strong {
+  font-size: 13px;
+}
+
+.sd-loading span {
+  color: #94a3b8;
+  font-size: 10px;
+}
+
+.sd-spinner {
+  width: 27px;
+  height: 27px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #475569;
+  border-radius: 50%;
+  animation: sd-spin .8s linear infinite;
+}
+
+.sd-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 4px 2px;
+  color: #94a3b8;
+  font-size: 9px;
+}
+
+@media (max-width: 1250px) {
+  .sd-stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .sd-device-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .sd-main-grid,
+  .sd-content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sd-header {
+    flex-direction: column;
+  }
+
+  .sd-header-actions {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 650px) {
+  .sd-page {
+    padding: 17px;
+  }
+
+  .sd-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sd-device-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sd-control-legend {
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .sd-footer {
+    flex-direction: column;
+  }
+}
+`;

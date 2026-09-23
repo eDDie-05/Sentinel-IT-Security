@@ -18,9 +18,8 @@ function Sidebar({
 
         return (
             <button
-                onClick={() =>
-                    setPage(pageName)
-                }
+                type="button"
+                onClick={() => setPage(pageName)}
                 style={{
                     width: "100%",
                     padding: "12px 15px",
@@ -40,7 +39,22 @@ function Sidebar({
                     fontWeight:
                         page === pageName
                             ? "bold"
-                            : "normal"
+                            : "normal",
+                    fontSize: "14px",
+                    transition:
+                        "background 0.2s ease, color 0.2s ease"
+                }}
+                onMouseEnter={(event) => {
+                    if (page !== pageName) {
+                        event.currentTarget.style.background =
+                            "#f5f7fa";
+                    }
+                }}
+                onMouseLeave={(event) => {
+                    if (page !== pageName) {
+                        event.currentTarget.style.background =
+                            "transparent";
+                    }
                 }}
             >
                 {label}
@@ -50,23 +64,27 @@ function Sidebar({
 
 
     return (
-
         <aside
             style={{
                 width: "230px",
                 minHeight: "100vh",
                 background: "#ffffff",
-                borderRight:
-                    "1px solid #ddd",
+                borderRight: "1px solid #ddd",
                 padding: "20px",
-                boxSizing: "border-box"
+                boxSizing: "border-box",
+                flexShrink: 0
             }}
         >
+
+            {/* BRAND */}
 
             <h2
                 style={{
                     marginTop: 0,
-                    marginBottom: "5px"
+                    marginBottom: "5px",
+                    fontSize: "22px",
+                    fontWeight: "700",
+                    color: "#111827"
                 }}
             >
                 Security
@@ -85,7 +103,7 @@ function Sidebar({
             </p>
 
 
-            {/* DASHBOARD */}
+            {/* MAIN NAVIGATION */}
 
             {menuButton(
                 "dashboard",
@@ -93,15 +111,11 @@ function Sidebar({
             )}
 
 
-            {/* DEVICES */}
-
             {menuButton(
                 "devices",
                 "Devices"
             )}
 
-
-            {/* SECURITY ALERTS */}
 
             {menuButton(
                 "alerts",
@@ -109,40 +123,41 @@ function Sidebar({
             )}
 
 
-            {/* USERS */}
+            {/* ADMINISTRATION */}
 
             {isAdministrator &&
                 menuButton(
                     "users",
                     "Users"
-                )}
+                )
+            }
 
 
-            {/* SETTINGS */}
-
-            {(isAdministrator ||
-                isManager) &&
+            {(isAdministrator || isManager) &&
                 menuButton(
                     "settings",
-                    "Settings"
-                )}
+                    "Security Policy"
+                )
+            }
 
 
-            {/* AUDIT LOG */}
+            {/* AUDIT TRAILS */}
 
             {isAdministrator &&
                 menuButton(
-                    "audit-logs",
-                    "Activity / Audit Log"
-                )}
+                    "activity",
+                    "Audit Trails"
+                )
+            }
 
+
+            {/* ACCESS LEVEL */}
 
             <div
                 style={{
                     marginTop: "30px",
                     paddingTop: "20px",
-                    borderTop:
-                        "1px solid #eee"
+                    borderTop: "1px solid #eee"
                 }}
             >
 
@@ -150,6 +165,7 @@ function Sidebar({
                     style={{
                         fontSize: "13px",
                         color: "#777",
+                        marginTop: 0,
                         marginBottom: "8px"
                     }}
                 >
@@ -157,8 +173,13 @@ function Sidebar({
                 </p>
 
 
-                <strong>
-                    {userRole}
+                <strong
+                    style={{
+                        fontSize: "14px",
+                        color: "#222"
+                    }}
+                >
+                    {userRole || "Unknown"}
                 </strong>
 
             </div>

@@ -3754,6 +3754,586 @@ app.post(
 );
 
 /* =========================================================
+   APPLICATION INVENTORY
+========================================================= */
+
+app.post(
+  "/api/agent/applications",
+  async (req, res) => {
+    try {
+      const body = req.body || {};
+
+      const deviceId =
+        cleanString(
+          body.deviceId ??
+            body.device_id
+        );
+
+      const applications =
+        Array.isArray(body.applications)
+          ? body.applications
+          : [];
+
+      if (!deviceId) {
+        return res.status(400).json({
+          error: "deviceId is required",
+        });
+      }
+
+      if (applications.length === 0) {
+        return res.json({
+          success: true,
+          message: "No applications received",
+          deviceId,
+          count: 0,
+        });
+      }
+
+      const deviceResult =
+        await pool.query(
+          `
+            SELECT id
+            FROM devices
+            WHERE device_id = $1
+            LIMIT 1;
+          `,
+          [deviceId]
+        );
+
+      if (deviceResult.rows.length === 0) {
+        return res.status(404).json({
+          error: "Device not found",
+          deviceId,
+        });
+      }
+
+      let saved = 0;
+
+      for (const application of applications) {
+        const name =
+          cleanString(
+            application.name ??
+              application.application_name
+          );
+
+        if (!name) {
+          continue;
+        }
+
+        const version =
+          cleanString(
+            application.version
+          ) || null;
+
+        const path =
+          cleanString(
+            application.path
+          ) || null;
+
+        const detectedAt =
+          safeDate(
+            application.detectedAt ??
+              application.detected_at
+          ) || new Date();
+
+        await pool.query(
+          `
+            INSERT INTO device_applications (
+              device_id,
+              application_name,
+              version,
+              path,
+              detected_at
+            )
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (
+              device_id,
+              application_name,
+              path
+            )
+            DO UPDATE SET
+              version = EXCLUDED.version,
+              detected_at = EXCLUDED.detected_at;
+          `,
+          [
+            deviceId,
+            name,
+            version,
+            path,
+            detectedAt,
+          ]
+        );
+
+        saved++;
+      }
+
+      console.log(
+        `Application inventory saved: ${deviceId} (${saved} applications)`
+      );
+
+      res.json({
+        success: true,
+        message:
+          "Application inventory saved",
+        deviceId,
+        count: saved,
+      });
+    } catch (error) {
+      console.error(
+        "Application inventory error:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Failed to save application inventory",
+        message: error.message,
+      });
+    }
+  }
+);
+
+app.get(
+  "/api/applications",
+  auth,
+  async (req, res) => {
+    try {
+      const result =
+        await pool.query(
+          `
+            SELECT
+              id,
+              device_id,
+              application_name,
+              version,
+              path,
+              detected_at
+            FROM device_applications
+            ORDER BY application_name ASC;
+          `
+        );
+
+      res.json(result.rows);
+    } catch (error) {
+      console.error(
+        "Get applications error:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Failed to load applications",
+      });
+    }
+  }
+);
+
+app.get(
+  "/api/devices/:deviceId/applications",
+  auth,
+  async (req, res) => {
+    try {
+      const deviceId =
+        cleanString(
+          req.params.deviceId
+        );
+
+      if (!deviceId) {
+        return res.status(400).json({
+          error:
+            "Device ID is required",
+        });
+      }
+
+      const result =
+        await pool.query(
+          `
+            SELECT
+              id,
+              device_id,
+              application_name,
+              version,
+              path,
+              detected_at
+            FROM device_applications
+            WHERE device_id = $1
+            ORDER BY application_name ASC;
+          `,
+          [deviceId]
+        );
+
+      res.json(result.rows);
+    } catch (error) {
+      console.error(
+        "Get device applications error:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Failed to load device applications",
+      });
+    }
+  }
+);
+
+/* =========================================================
+   APPLICATION SECURITY INTELLIGENCE API
+========================================================= */
+
+app.get(
+  "/api/application-security",
+  auth,
+  async (req, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT
+          id,
+          application_name,
+          version_pattern,
+          security_status,
+          severity,
+          title,
+          description,
+          source,
+          source_reference,
+          published_at,
+          updated_at,
+          created_at
+        FROM application_security_intelligence
+        ORDER BY application_name ASC, version_pattern ASC;
+      `);
+
+      res.json(result.rows);
+    } catch (error) {
+      console.error(
+        "Get application security intelligence error:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Failed to load application security intelligence",
+      });
+    }
+  }
+);
+
+
+app.post(
+  "/api/application-security",
+  auth,
+  async (req, res) => {
+    try {
+      const body = req.body || {};
+
+      const applicationName =
+        cleanString(
+          body.application_name
+        );
+
+      const versionPattern =
+        cleanString(
+          body.version_pattern
+        ) || null;
+
+      const securityStatus =
+        cleanString(
+          body.security_status
+        ) || "UNKNOWN";
+
+      const severity =
+        cleanString(
+          body.severity
+        ) || "INFO";
+
+      const title =
+        cleanString(
+          body.title
+        ) || null;
+
+      const description =
+        cleanString(
+          body.description
+        ) || null;
+
+      const source =
+        cleanString(
+          body.source
+        ) || null;
+
+      const sourceReference =
+        cleanString(
+          body.source_reference
+        ) || null;
+
+      const publishedAt =
+        safeDate(
+          body.published_at
+        ) || null;
+
+      if (!applicationName) {
+        return res.status(400).json({
+          error:
+            "application_name is required",
+        });
+      }
+
+      const allowedStatuses = [
+        "UNKNOWN",
+        "MONITORED",
+        "REVIEW",
+        "VULNERABLE",
+        "SECURE",
+      ];
+
+      const allowedSeverities = [
+        "INFO",
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "CRITICAL",
+      ];
+
+      if (
+        !allowedStatuses.includes(
+          securityStatus
+        )
+      ) {
+        return res.status(400).json({
+          error:
+            "Invalid security_status",
+        });
+      }
+
+      if (
+        !allowedSeverities.includes(
+          severity
+        )
+      ) {
+        return res.status(400).json({
+          error:
+            "Invalid severity",
+        });
+      }
+
+      const result = await pool.query(
+        `
+          INSERT INTO application_security_intelligence (
+            application_name,
+            version_pattern,
+            security_status,
+            severity,
+            title,
+            description,
+            source,
+            source_reference,
+            published_at,
+            updated_at
+          )
+          VALUES (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            $7,
+            $8,
+            $9,
+            CURRENT_TIMESTAMP
+          )
+          RETURNING
+            id,
+            application_name,
+            version_pattern,
+            security_status,
+            severity,
+            title,
+            description,
+            source,
+            source_reference,
+            published_at,
+            updated_at,
+            created_at;
+        `,
+        [
+          applicationName,
+          versionPattern,
+          securityStatus,
+          severity,
+          title,
+          description,
+          source,
+          sourceReference,
+          publishedAt,
+        ]
+      );
+
+      res.status(201).json({
+        success: true,
+        message:
+          "Application security intelligence created",
+        data: result.rows[0],
+      });
+    } catch (error) {
+      console.error(
+        "Create application security intelligence error:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Failed to create application security intelligence",
+        message: error.message,
+      });
+    }
+  }
+);
+
+
+app.delete(
+  "/api/application-security/:id",
+  auth,
+  async (req, res) => {
+    try {
+      const id =
+        Number(req.params.id);
+
+      if (
+        !Number.isInteger(id) ||
+        id <= 0
+      ) {
+        return res.status(400).json({
+          error:
+            "Invalid intelligence ID",
+        });
+      }
+
+      const result = await pool.query(
+        `
+          DELETE FROM
+            application_security_intelligence
+          WHERE id = $1
+          RETURNING id;
+        `,
+        [id]
+      );
+
+      if (
+        result.rows.length === 0
+      ) {
+        return res.status(404).json({
+          error:
+            "Application security intelligence not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        message:
+          "Application security intelligence deleted",
+        id,
+      });
+    } catch (error) {
+      console.error(
+        "Delete application security intelligence error:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Failed to delete application security intelligence",
+      });
+    }
+  }
+);
+
+
+app.get(
+  "/api/application-security/check/:applicationName",
+  auth,
+  async (req, res) => {
+    try {
+      const applicationName =
+        cleanString(
+          req.params.applicationName
+        );
+
+      if (!applicationName) {
+        return res.status(400).json({
+          error:
+            "Application name is required",
+        });
+      }
+
+      const result = await pool.query(
+        `
+          SELECT
+            id,
+            application_name,
+            version_pattern,
+            security_status,
+            severity,
+            title,
+            description,
+            source,
+            source_reference,
+            published_at,
+            updated_at
+          FROM
+            application_security_intelligence
+          WHERE
+            LOWER(application_name)
+            =
+            LOWER($1)
+          ORDER BY
+            updated_at DESC;
+        `,
+        [applicationName]
+      );
+
+      if (
+        result.rows.length === 0
+      ) {
+        return res.json({
+          application_name:
+            applicationName,
+
+          security_status:
+            "UNKNOWN",
+
+          severity:
+            "INFO",
+
+          message:
+            "No verified security intelligence is available for this application.",
+        });
+      }
+
+      res.json({
+        application_name:
+          applicationName,
+
+        results:
+          result.rows,
+      });
+    } catch (error) {
+      console.error(
+        "Check application security error:",
+        error
+      );
+
+      res.status(500).json({
+        error:
+          "Failed to check application security",
+      });
+    }
+  }
+);
+
+
+/* =========================================================
    SECURITY POLICY GET
 ========================================================= */
 
