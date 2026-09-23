@@ -6223,7 +6223,7 @@ app.get(
    REACT FRONTEND
 ========================================================= */
 
-const frontendPath = path.join(process.cwd(), "dist");
+const frontendPath = path.join(__dirname, "..", "dist");
 
 app.use(express.static(frontendPath));
 
