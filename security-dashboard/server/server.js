@@ -1902,21 +1902,9 @@ async function refreshDeviceSecurityStatuses() {
    ROOT
 ========================================================= */
 
-app.get(
-  "/",
-  (req, res) => {
-    res.json({
-      service:
-        "Sentinel IT Security API",
-
-      version:
-        "6.0.0",
-
-      status:
-        "running",
-    });
-  }
-);
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "..", "dist", "index.html"));
+});
 
 /* =========================================================
    HEALTH
