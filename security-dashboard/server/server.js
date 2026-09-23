@@ -6220,6 +6220,18 @@ app.get(
 );
 
 /* =========================================================
+   REACT FRONTEND
+========================================================= */
+
+const frontendPath = path.join(process.cwd(), "dist");
+
+app.use(express.static(frontendPath));
+
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(frontendPath, "index.html"));
+});
+
+/* =========================================================
    404
 ========================================================= */
 
@@ -6235,13 +6247,6 @@ app.use(
 /* =========================================================
    GLOBAL ERROR HANDLER
 ========================================================= */
-const frontendPath = path.join(process.cwd(), "dist");
-
-app.use(express.static(frontendPath));
-
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(frontendPath, "index.html"));
-});
 
 app.use(
   (
