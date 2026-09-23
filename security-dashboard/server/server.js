@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const bcrypt = require("bcrypt");
+const path = require("path");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 
@@ -6327,6 +6328,13 @@ async function startServer() {
     );
 
     await refreshDeviceSecurityStatuses();
+
+    // Serve React frontend
+app.use(express.static(path.join(__dirname, "..", "dist")));
+
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(__dirname, "..", "dist", "index.html"));
+});
 
     app.listen(
       PORT,
