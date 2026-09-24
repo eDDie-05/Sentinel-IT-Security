@@ -20,17 +20,16 @@ function Applications() {
 
       const token = getToken();
 
-      const response = await fetch(
-        API + "/applications",
-        {
-          headers: {
-            Authorization: "Bearer " + token,
-          },
-        }
-      );
+      const response = await fetch(API + "/applications", {
+        headers: {
+          Authorization: "Bearer " + token,
+        },
+      });
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
+        const data = await response.json().catch(function () {
+          return {};
+        });
 
         throw new Error(
           data.error || "Failed to load applications"
@@ -39,25 +38,19 @@ function Applications() {
 
       const data = await response.json();
 
-      setApplications(
-        Array.isArray(data) ? data : []
-      );
+      setApplications(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(
-        "Applications load error:",
-        err
-      );
+      console.error("Applications load error:", err);
 
       setError(
-        err.message ||
-          "Failed to load application inventory"
+        err.message || "Failed to load application inventory"
       );
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
+  useEffect(function () {
     loadApplications();
 
     const interval = setInterval(
@@ -65,10 +58,12 @@ function Applications() {
       30000
     );
 
-    return () => clearInterval(interval);
+    return function () {
+      clearInterval(interval);
+    };
   }, []);
 
-  const devices = useMemo(() => {
+  const devices = useMemo(function () {
     const values = applications
       .map(function (app) {
         return app.device_id;
@@ -78,32 +73,22 @@ function Applications() {
     return Array.from(new Set(values)).sort();
   }, [applications]);
 
-  const filteredApplications = useMemo(() => {
-    const query = search
-      .trim()
-      .toLowerCase();
+  const filteredApplications = useMemo(function () {
+    const query = search.trim().toLowerCase();
 
     return applications.filter(function (app) {
       const matchesSearch =
         !query ||
-        String(
-          app.application_name || ""
-        )
+        String(app.application_name || "")
           .toLowerCase()
           .includes(query) ||
-        String(
-          app.version || ""
-        )
+        String(app.version || "")
           .toLowerCase()
           .includes(query) ||
-        String(
-          app.device_id || ""
-        )
+        String(app.device_id || "")
           .toLowerCase()
           .includes(query) ||
-        String(
-          app.path || ""
-        )
+        String(app.path || "")
           .toLowerCase()
           .includes(query);
 
@@ -111,18 +96,11 @@ function Applications() {
         deviceFilter === "all" ||
         app.device_id === deviceFilter;
 
-      return (
-        matchesSearch &&
-        matchesDevice
-      );
+      return matchesSearch && matchesDevice;
     });
-  }, [
-    applications,
-    search,
-    deviceFilter,
-  ]);
+  }, [applications, search, deviceFilter]);
 
-  const uniqueApplications = useMemo(() => {
+  const uniqueApplications = useMemo(function () {
     return new Set(
       applications
         .map(function (app) {
@@ -132,7 +110,7 @@ function Applications() {
     ).size;
   }, [applications]);
 
-  const uniqueDevices = useMemo(() => {
+  const uniqueDevices = useMemo(function () {
     return new Set(
       applications
         .map(function (app) {
@@ -156,85 +134,149 @@ function Applications() {
     return date.toLocaleString();
   }
 
+  function getInitials(name) {
+    if (!name) {
+      return "APP";
+    }
+
+    const words = String(name)
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    if (words.length === 1) {
+      return words[0].substring(0, 3).toUpperCase();
+    }
+
+    return (
+      words[0].substring(0, 1) +
+      words[1].substring(0, 1)
+    ).toUpperCase();
+  }
+
   function closeDetails() {
     setSelectedApplication(null);
   }
 
   return (
-    <div className="applications-page">
+    <div className="sentinel-inventory-page">
 
-      <div className="applications-header">
-        <div>
-          <div className="applications-kicker">
-            SOFTWARE MONITORING
+      <section className="inventory-hero">
+
+        <div className="inventory-hero-left">
+
+          <div className="inventory-eyebrow">
+            <span className="live-pulse" />
+            SENTINEL SOFTWARE INTELLIGENCE
           </div>
 
-          <h1>
-            Application Inventory
-          </h1>
+          <h1>Application Inventory</h1>
 
           <p>
-            Software detected on company
-            computers by the Sentinel agent.
+            Complete software visibility across monitored
+            company endpoints.
           </p>
+
         </div>
 
         <button
-          className="applications-refresh"
+          className="inventory-refresh"
           onClick={loadApplications}
         >
-          Refresh
+          <span>↻</span>
+          Refresh Inventory
         </button>
-      </div>
 
-      <div className="applications-stats">
+      </section>
 
-        <div className="application-stat-card">
-          <span>Total Records</span>
-          <strong>
-            {applications.length}
-          </strong>
+      <section className="inventory-metrics">
+
+        <div className="inventory-metric">
+          <div className="metric-icon metric-icon-blue">
+            ▦
+          </div>
+
+          <div>
+            <span>Total Records</span>
+            <strong>{applications.length}</strong>
+            <small>Inventory records</small>
+          </div>
         </div>
 
-        <div className="application-stat-card">
-          <span>Unique Applications</span>
-          <strong>
-            {uniqueApplications}
-          </strong>
+        <div className="inventory-metric">
+          <div className="metric-icon metric-icon-purple">
+            ◈
+          </div>
+
+          <div>
+            <span>Applications</span>
+            <strong>{uniqueApplications}</strong>
+            <small>Unique software</small>
+          </div>
         </div>
 
-        <div className="application-stat-card">
-          <span>Devices Reporting</span>
-          <strong>
-            {uniqueDevices}
-          </strong>
+        <div className="inventory-metric">
+          <div className="metric-icon metric-icon-green">
+            ◉
+          </div>
+
+          <div>
+            <span>Endpoints</span>
+            <strong>{uniqueDevices}</strong>
+            <small>Reporting devices</small>
+          </div>
         </div>
 
-        <div className="application-stat-card">
-          <span>Showing</span>
-          <strong>
-            {filteredApplications.length}
-          </strong>
+        <div className="inventory-metric">
+          <div className="metric-icon metric-icon-orange">
+            ⌕
+          </div>
+
+          <div>
+            <span>Visible</span>
+            <strong>{filteredApplications.length}</strong>
+            <small>Current results</small>
+          </div>
         </div>
 
-      </div>
+      </section>
 
-      <div className="applications-panel">
+      <section className="inventory-workspace">
 
-        <div className="applications-controls">
+        <div className="inventory-toolbar">
 
-          <div className="applications-search">
+          <div className="inventory-search-box">
+
+            <span className="search-symbol">
+              ⌕
+            </span>
+
             <input
               type="text"
-              placeholder="Search application, version, device or path..."
+              placeholder="Search applications, versions, devices or paths..."
               value={search}
               onChange={function (event) {
                 setSearch(event.target.value);
               }}
             />
+
+            {search && (
+              <button
+                className="search-clear"
+                onClick={function () {
+                  setSearch("");
+                }}
+              >
+                ×
+              </button>
+            )}
+
           </div>
 
-          <div className="applications-filter">
+          <div className="inventory-filter-wrap">
+
+            <span>DEVICE</span>
+
             <select
               value={deviceFilter}
               onChange={function (event) {
@@ -242,7 +284,7 @@ function Applications() {
               }}
             >
               <option value="all">
-                All Devices
+                All endpoints
               </option>
 
               {devices.map(function (device) {
@@ -256,240 +298,247 @@ function Applications() {
                 );
               })}
             </select>
+
+          </div>
+
+        </div>
+
+        <div className="inventory-table-head">
+
+          <div>
+            SOFTWARE CATALOG
+          </div>
+
+          <div>
+            {filteredApplications.length} RESULTS
           </div>
 
         </div>
 
         {loading ? (
-          <div className="applications-empty">
-            Loading application inventory...
+          <div className="inventory-state">
+            <div className="state-spinner" />
+            <strong>Scanning inventory data</strong>
+            <span>
+              Waiting for Sentinel application records...
+            </span>
           </div>
         ) : error ? (
-          <div className="applications-error">
+          <div className="inventory-state inventory-error-state">
+
+            <div className="state-error-icon">
+              !
+            </div>
+
             <strong>
-              Unable to load applications
+              Inventory connection failed
             </strong>
 
-            <p>{error}</p>
+            <span>{error}</span>
 
-            <button
-              onClick={loadApplications}
-            >
-              Try Again
+            <button onClick={loadApplications}>
+              Retry Connection
             </button>
+
           </div>
         ) : filteredApplications.length === 0 ? (
-          <div className="applications-empty">
+          <div className="inventory-state">
+
+            <div className="state-empty-icon">
+              ◌
+            </div>
+
             <strong>
-              No applications found
+              No software records found
             </strong>
 
-            <p>
-              The Sentinel agent has not
-              reported matching application
-              records yet.
-            </p>
+            <span>
+              The Sentinel agent has not reported
+              matching application records.
+            </span>
+
           </div>
         ) : (
-          <div className="applications-table-wrapper">
+          <div className="inventory-list">
 
-            <table className="applications-table">
+            {filteredApplications.map(
+              function (app, index) {
+                return (
+                  <div
+                    className="inventory-row"
+                    key={
+                      app.id ||
+                      app.device_id +
+                        "-" +
+                        app.application_name +
+                        "-" +
+                        index
+                    }
+                    onClick={function () {
+                      setSelectedApplication(app);
+                    }}
+                  >
 
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Application</th>
-                  <th>Version</th>
-                  <th>Device</th>
-                  <th>Installation Path</th>
-                  <th>Detected</th>
-                </tr>
-              </thead>
+                    <div className="inventory-number">
+                      {String(index + 1).padStart(2, "0")}
+                    </div>
 
-              <tbody>
+                    <div className="inventory-app-identity">
 
-                {filteredApplications.map(
-                  function (app, index) {
-                    return (
-                      <tr
-                        key={
-                          app.id ||
-                          app.device_id +
-                            "-" +
-                            app.application_name +
-                            "-" +
-                            index
-                        }
-                        onClick={function () {
-                          setSelectedApplication(
-                            app
-                          );
-                        }}
-                        className="application-row"
-                      >
+                      <div className="app-avatar">
+                        {getInitials(
+                          app.application_name
+                        )}
+                      </div>
 
-                        <td>
-                          {index + 1}
-                        </td>
+                      <div className="app-title-block">
 
-                        <td>
-                          <div className="application-name-cell">
-                            <strong>
-                              {
-                                app.application_name ||
-                                "Unknown Application"
-                              }
-                            </strong>
+                        <strong>
+                          {app.application_name ||
+                            "Unknown Application"}
+                        </strong>
 
-                            <span>
-                              Monitored
-                            </span>
-                          </div>
-                        </td>
+                        <span>
+                          {app.path ||
+                            "Installation path unavailable"}
+                        </span>
 
-                        <td>
-                          {app.version ||
-                            "Unknown"}
-                        </td>
+                      </div>
 
-                        <td>
-                          {app.device_id ||
-                            "Unknown"}
-                        </td>
+                    </div>
 
-                        <td>
-                          <span className="application-path">
-                            {app.path ||
-                              "Unknown"}
-                          </span>
-                        </td>
+                    <div className="inventory-version">
 
-                        <td>
-                          {formatDate(
-                            app.detected_at
-                          )}
-                        </td>
+                      <span className="column-label">
+                        VERSION
+                      </span>
 
-                      </tr>
-                    );
-                  }
-                )}
+                      <strong>
+                        {app.version ||
+                          "Unknown"}
+                      </strong>
 
-              </tbody>
+                    </div>
 
-            </table>
+                    <div className="inventory-device">
+
+                      <span className="column-label">
+                        ENDPOINT
+                      </span>
+
+                      <div className="endpoint-chip">
+                        <span className="endpoint-dot" />
+                        {app.device_id ||
+                          "Unknown"}
+                      </div>
+
+                    </div>
+
+                    <div className="inventory-detected">
+
+                      <span className="column-label">
+                        LAST DETECTED
+                      </span>
+
+                      <strong>
+                        {formatDate(
+                          app.detected_at
+                        )}
+                      </strong>
+
+                    </div>
+
+                    <div className="inventory-arrow">
+                      →
+                    </div>
+
+                  </div>
+                );
+              }
+            )}
 
           </div>
         )}
 
-      </div>
+      </section>
 
       {selectedApplication && (
         <div
-          className="application-modal-overlay"
+          className="inventory-modal-backdrop"
           onClick={function (event) {
             if (
-              event.target ===
-              event.currentTarget
+              event.target === event.currentTarget
             ) {
               closeDetails();
             }
           }}
         >
 
-          <div className="application-modal">
+          <div className="inventory-details-panel">
 
-            <div className="application-modal-header">
+            <div className="details-top">
 
-              <div>
-                <div className="applications-kicker">
-                  APPLICATION DETAILS
+              <div className="details-brand">
+                <div className="details-avatar">
+                  {getInitials(
+                    selectedApplication.application_name
+                  )}
                 </div>
 
-                <h2>
-                  {
-                    selectedApplication.application_name ||
-                    "Unknown Application"
-                  }
-                </h2>
+                <div>
+                  <span>SOFTWARE RECORD</span>
+
+                  <h2>
+                    {
+                      selectedApplication.application_name ||
+                      "Unknown Application"
+                    }
+                  </h2>
+                </div>
               </div>
 
               <button
-                className="application-modal-close"
+                className="details-close"
                 onClick={closeDetails}
-                aria-label="Close"
               >
                 ×
               </button>
 
             </div>
 
-            <div className="application-modal-status">
-              <span className="application-status-dot" />
-
-              MONITORED
+            <div className="details-monitored">
+              <span className="live-pulse" />
+              MONITORED BY SENTINEL
             </div>
 
-            <div className="application-details-grid">
+            <div className="details-grid">
 
-              <div className="application-detail-item">
-                <span>Application</span>
-
+              <div className="details-card">
+                <span>VERSION</span>
                 <strong>
-                  {
-                    selectedApplication.application_name ||
-                    "Unknown"
-                  }
+                  {selectedApplication.version ||
+                    "Unknown"}
                 </strong>
               </div>
 
-              <div className="application-detail-item">
-                <span>Version</span>
-
+              <div className="details-card">
+                <span>ENDPOINT</span>
                 <strong>
-                  {
-                    selectedApplication.version ||
-                    "Unknown"
-                  }
+                  {selectedApplication.device_id ||
+                    "Unknown"}
                 </strong>
               </div>
 
-              <div className="application-detail-item">
-                <span>Device</span>
-
+              <div className="details-card">
+                <span>RECORD ID</span>
                 <strong>
-                  {
-                    selectedApplication.device_id ||
-                    "Unknown"
-                  }
+                  #{selectedApplication.id ||
+                    "Unknown"}
                 </strong>
               </div>
 
-              <div className="application-detail-item">
-                <span>Record ID</span>
-
-                <strong>
-                  {
-                    selectedApplication.id ||
-                    "Unknown"
-                  }
-                </strong>
-              </div>
-
-              <div className="application-detail-item application-detail-full">
-                <span>Installation Path</span>
-
-                <strong className="application-detail-path">
-                  {
-                    selectedApplication.path ||
-                    "Unknown"
-                  }
-                </strong>
-              </div>
-
-              <div className="application-detail-item">
-                <span>Detected</span>
-
+              <div className="details-card">
+                <span>DETECTED</span>
                 <strong>
                   {formatDate(
                     selectedApplication.detected_at
@@ -497,11 +546,22 @@ function Applications() {
                 </strong>
               </div>
 
+              <div className="details-card details-full">
+                <span>INSTALLATION PATH</span>
+                <strong className="details-path">
+                  {selectedApplication.path ||
+                    "Unknown"}
+                </strong>
+              </div>
+
             </div>
 
-            <div className="application-modal-footer">
-              Application inventory is collected
-              automatically by the Sentinel agent.
+            <div className="details-footer">
+              <span>
+                ●
+              </span>
+              Application inventory is automatically
+              collected by the Sentinel endpoint agent.
             </div>
 
           </div>

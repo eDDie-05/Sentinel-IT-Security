@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import DeviceList from "./DeviceList";
 import Reports from "./Reports";
 import Applications from "./Applications";
+import ApplicationSecurity from "./ApplicationSecurity";
 const API = "http://localhost:5000/api";
 
 const defaultPolicy = {
@@ -839,6 +840,7 @@ function Sidebar({
   ["devices", "▣", "Devices"],
   ["alerts", "!", "Security Alerts"],
   ["applications", "▤", "Application Inventory"],
+  ["application-security", "◈", "Application Security"],
   ["reports", "▤", "Reports & Analytics"]
 ];
 
@@ -5193,6 +5195,10 @@ applications: [
   "Application Inventory",
   "Software detected on company computers"
 ],
+"application-security": [
+  "Application Security",
+  "Security intelligence for monitored software"
+],
 reports: [
   "Reports & Analytics",
   "Security posture, compliance and operational analytics"
@@ -5276,6 +5282,9 @@ reports: [
           />
         )}
         {page === "applications" && <Applications />}
+        {page === "application-security" && (
+  <ApplicationSecurity />
+)}
         {page === "reports" && <Reports />}
 
         {page === "settings" && (
